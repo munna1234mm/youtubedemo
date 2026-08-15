@@ -8,7 +8,8 @@ import {
   Sparkles, 
   Share2, 
   Pause, 
-  Play 
+  Play,
+  Trash2
 } from 'lucide-react';
 import { Story, User } from '../types';
 import { triggerHaptic, fireConfetti, shareToTelegram } from '../utils/telegram';
@@ -20,6 +21,7 @@ interface StoryViewerProps {
   onClose: () => void;
   onSendStoryReply: (storyId: string, replyText: string) => void;
   onTipStars: (amount: number, recipientName: string) => void;
+  onDeleteStory?: (storyId: string) => void;
 }
 
 export const StoryViewer: React.FC<StoryViewerProps> = ({
@@ -179,6 +181,19 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
 
             {/* Controls */}
             <div className="flex items-center gap-2 text-white">
+              {currentUser && (currentUser.id === currentStory.userId || currentUser.name === currentStory.userName) && onDeleteStory && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    triggerHaptic('heavy');
+                    onDeleteStory(currentStory.id);
+                  }}
+                  className="p-1.5 rounded-full bg-rose-500/30 hover:bg-rose-500/60 text-rose-300 border border-rose-500/40 backdrop-blur-sm transition"
+                  title="Delete Story"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              )}
               <button
                 onClick={(e) => {
                   e.stopPropagation();

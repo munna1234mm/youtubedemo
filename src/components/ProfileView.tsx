@@ -44,6 +44,7 @@ interface ProfileViewProps {
   onVotePoll: (postId: string, optionId: string) => void;
   onTipStars: (amount: number, recipientName: string) => void;
   onToggleSave: (postId: string) => void;
+  onDeletePost?: (postId: string) => void;
   isFrameMode: boolean;
   setIsFrameMode: (val: boolean | ((prev: boolean) => boolean)) => void;
 }
@@ -65,6 +66,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   onVotePoll,
   onTipStars,
   onToggleSave,
+  onDeletePost,
   isFrameMode,
   setIsFrameMode,
 }) => {
@@ -395,6 +397,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 onVotePoll={onVotePoll}
                 onTipStars={onTipStars}
                 onToggleSave={onToggleSave}
+                onDeletePost={onDeletePost}
               />
             ))
           )}

@@ -67,7 +67,7 @@ export const ChatModal: React.FC<ChatModalProps> = ({
 
   useEffect(() => {
     fetchMessages();
-    const interval = setInterval(fetchMessages, 3000);
+    const interval = setInterval(fetchMessages, 1500);
     return () => clearInterval(interval);
   }, [participant.id, currentUser.id]);
 
@@ -106,39 +106,6 @@ export const ChatModal: React.FC<ChatModalProps> = ({
       });
     } catch {
       // ignore
-    }
-
-    // Auto smart bot reply if chatting with demo characters
-    if (participant.id.startsWith('user_')) {
-      setIsTyping(true);
-      setTimeout(async () => {
-        setIsTyping(false);
-        triggerHaptic('medium');
-        const replies = [
-          "That's awesome! Love how fast TeleBook runs on Telegram! 🔥",
-          "Got it! I just checked your latest video reel too, super high quality! 🎬",
-          "Let's collaborate on the next TON project! 🚀",
-          "Thanks for messaging! Always active here on TeleBook. 💎",
-        ];
-        const randomReply = replies[Math.floor(Math.random() * replies.length)];
-        
-        try {
-          const res = await fetch('/api/messages', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              senderId: participant.id,
-              receiverId: currentUser.id,
-              text: randomReply,
-            }),
-          });
-          if (res.ok) {
-            fetchMessages();
-          }
-        } catch {
-          // ignore
-        }
-      }, 1200);
     }
   };
 

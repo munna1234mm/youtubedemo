@@ -737,9 +737,19 @@ app.post('/api/users/follow', (req, res) => {
   res.json({ success: true });
 });
 
-// Stories API (Global Community Stories)
+// Stories API (Global Community Stories with 24-hour Expiry)
 app.get('/api/stories', (req, res) => {
-  res.json({ success: true, stories: db.stories || [] });
+  const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
+  const now = Date.now();
+  if (!db.stories) db.stories = [];
+  
+  // Filter stories older than 24 hours
+  db.stories = db.stories.filter((s: any) => {
+    const created = s.createdAt || (s.id.startsWith('story_') ? parseInt(s.id.replace('story_', '')) || now : now);
+    return now - created < TWENTY_FOUR_HOURS;
+  });
+
+  res.json({ success: true, stories: db.stories });
 });
 
 app.post('/api/stories', (req, res) => {
@@ -770,6 +780,15 @@ app.post('/api/stories', (req, res) => {
   res.json({ success: true, story: newStory });
 });
 
+// Delete story endpoint (for story author)
+app.delete('/api/stories/:id', (req, res) => {
+  const { id } = req.params;
+  if (!db.stories) db.stories = [];
+  db.stories = db.stories.filter((s: any) => s.id !== id);
+  saveDb();
+  res.json({ success: true, message: 'Story deleted' });
+});
+
 app.post('/api/stories/:id/like', (req, res) => {
   const { id } = req.params;
   if (!db.stories) db.stories = [];
@@ -779,6 +798,15 @@ app.post('/api/stories/:id/like', (req, res) => {
     saveDb();
   }
   res.json({ success: true, story });
+});
+
+// Delete post endpoint (for post author)
+app.delete('/api/posts/:id', (req, res) => {
+  const { id } = req.params;
+  if (!db.posts) db.posts = [];
+  db.posts = db.posts.filter((p: any) => p.id !== id);
+  saveDb();
+  res.json({ success: true, message: 'Post deleted' });
 });
 
 // React on any post

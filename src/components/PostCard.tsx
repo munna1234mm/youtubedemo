@@ -14,7 +14,8 @@ import {
   Link as LinkIcon,
   Copy,
   Film,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Trash2
 } from 'lucide-react';
 import { Post, ReactionType, User } from '../types';
 import { triggerHaptic, fireConfetti, shareToTelegram } from '../utils/telegram';
@@ -28,6 +29,7 @@ interface PostCardProps {
   onVotePoll: (postId: string, optionId: string) => void;
   onTipStars: (amount: number, recipientName: string) => void;
   onToggleSave: (postId: string) => void;
+  onDeletePost?: (postId: string) => void;
   onViewProfile?: (user: User) => void;
 }
 
@@ -39,6 +41,7 @@ export const PostCard: React.FC<PostCardProps> = ({
   onVotePoll,
   onTipStars,
   onToggleSave,
+  onDeletePost,
   onViewProfile,
 }) => {
   const [showReactionsPopup, setShowReactionsPopup] = useState(false);
@@ -219,6 +222,22 @@ export const PostCard: React.FC<PostCardProps> = ({
                   <span>Tip 50 TG Stars</span>
                 </button>
               </div>
+
+              {currentUser && (currentUser.id === post.author.id || currentUser.username === post.author.username || currentUser.name === post.author.name) && onDeletePost && (
+                <div className="py-1">
+                  <button
+                    onClick={() => {
+                      triggerHaptic('heavy');
+                      setShowMenu(false);
+                      onDeletePost(post.id);
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-rose-400 hover:bg-rose-500/10 text-left font-semibold transition"
+                  >
+                    <Trash2 className="w-4 h-4 text-rose-400" />
+                    <span>Delete Post</span>
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>

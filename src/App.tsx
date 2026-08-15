@@ -360,6 +360,21 @@ export default function App() {
     } catch {}
   };
 
+  const handleDeleteStory = async (storyId: string) => {
+    setStories((prev) => prev.filter((s) => s.id !== storyId));
+    setActiveStoryIndex(null);
+    try {
+      await fetch(`/api/stories/${storyId}`, { method: 'DELETE' });
+    } catch {}
+  };
+
+  const handleDeletePost = async (postId: string) => {
+    setPosts((prev) => prev.filter((p) => p.id !== postId));
+    try {
+      await fetch(`/api/posts/${postId}`, { method: 'DELETE' });
+    } catch {}
+  };
+
   const handleVotePoll = (postId: string, optionId: string) => {
     setPosts((prev) =>
       prev.map((p) => {
@@ -857,6 +872,7 @@ export default function App() {
                     onVotePoll={handleVotePoll}
                     onTipStars={handleTipStars}
                     onToggleSave={handleToggleSave}
+                    onDeletePost={handleDeletePost}
                     onViewProfile={(author) => {
                       setViewingProfileUser(author);
                       setActiveTab('profile');
@@ -977,6 +993,7 @@ export default function App() {
               onVotePoll={handleVotePoll}
               onTipStars={handleTipStars}
               onToggleSave={handleToggleSave}
+              onDeletePost={handleDeletePost}
               isFrameMode={isFrameMode}
               setIsFrameMode={setIsFrameMode}
             />
@@ -993,6 +1010,7 @@ export default function App() {
             onClose={() => setActiveStoryIndex(null)}
             onSendStoryReply={handleSendStoryReply}
             onTipStars={handleTipStars}
+            onDeleteStory={handleDeleteStory}
           />
         )}
 
