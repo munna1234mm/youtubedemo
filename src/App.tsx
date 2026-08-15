@@ -113,6 +113,7 @@ export default function App() {
   const [activeChatParticipant, setActiveChatParticipant] = useState<User | null>(null);
   const [isStarsModalOpen, setIsStarsModalOpen] = useState(false);
   const [uploadTask, setUploadTask] = useState<UploadTask | null>(null);
+  const [viewingProfileUser, setViewingProfileUser] = useState<User | null>(null);
 
   // Sync with persistent backend posts
   useEffect(() => {
@@ -508,6 +509,15 @@ export default function App() {
     );
   });
 
+  const handleSelectTab = (tab: TabType) => {
+    if (tab === 'profile' && activeTab === 'profile') {
+      setViewingProfileUser(null);
+    } else if (tab !== 'profile') {
+      setViewingProfileUser(null);
+    }
+    setActiveTab(tab);
+  };
+
   return (
     <TelegramFrameWrapper
       isFrameMode={isFrameMode}
@@ -522,7 +532,7 @@ export default function App() {
         <Header
           currentUser={currentUser}
           activeTab={activeTab}
-          setActiveTab={setActiveTab}
+          setActiveTab={handleSelectTab}
           unreadMessagesCount={unreadMessagesCount}
           unreadNotifsCount={unreadNotifsCount}
           onOpenStarsModal={() => setIsStarsModalOpen(true)}
@@ -536,7 +546,7 @@ export default function App() {
         {/* Facebook-style Top Navigation */}
         <Navigation
           activeTab={activeTab}
-          setActiveTab={setActiveTab}
+          setActiveTab={handleSelectTab}
           unreadNotifsCount={unreadNotifsCount}
           unreadMessagesCount={unreadMessagesCount}
         />
@@ -626,17 +636,21 @@ export default function App() {
                     onVotePoll={handleVotePoll}
                     onTipStars={handleTipStars}
                     onToggleSave={handleToggleSave}
+                    onViewProfile={(author) => {
+                      setViewingProfileUser(author);
+                      setActiveTab('profile');
+                    }}
                   />
                 ))}
               </div>
 
-              {/* Demo Reset Helper Button at bottom */}
-              <div className="pt-6 pb-8 text-center">
+              {/* Reset to fresh state button */}
+              <div className="text-center pt-4 pb-2">
                 <button
                   onClick={handleResetDemoData}
-                  className="text-xs text-slate-600 hover:text-slate-400 flex items-center justify-center gap-1 mx-auto transition"
+                  className="text-xs text-slate-400 hover:text-rose-400 transition inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-800 hover:border-slate-750 bg-slate-900/50"
                 >
-                  <RefreshCw className="w-3 h-3" />
+                  <RotateCcw className="w-3.5 h-3.5" />
                   <span>Reset Demo Data</span>
                 </button>
               </div>
@@ -651,7 +665,7 @@ export default function App() {
               currentUser={currentUser}
               onOpenComments={(reelId) => {
                 // Open comments using dummy post reference
-                setActiveCommentsPostId(posts[0].id);
+                setActiveCommentsPostId(posts[0]?.id || null);
               }}
               onTipStars={handleTipStars}
               onOpenVideoStorage={() => setIsVideoStorageOpen(true)}
@@ -711,6 +725,9 @@ export default function App() {
           {activeTab === 'profile' && (
             <ProfileView
               currentUser={currentUser}
+              viewedUser={viewingProfileUser}
+              onBackToMyProfile={() => setViewingProfileUser(null)}
+              onOpenChat={(user) => setActiveChatParticipant(user)}
               posts={posts}
               savedPosts={posts.filter((p) => p.isSaved)}
               onUpdateBio={(newBio) => {

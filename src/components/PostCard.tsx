@@ -26,6 +26,7 @@ interface PostCardProps {
   onVotePoll: (postId: string, optionId: string) => void;
   onTipStars: (amount: number, recipientName: string) => void;
   onToggleSave: (postId: string) => void;
+  onViewProfile?: (user: User) => void;
 }
 
 export const PostCard: React.FC<PostCardProps> = ({
@@ -36,6 +37,7 @@ export const PostCard: React.FC<PostCardProps> = ({
   onVotePoll,
   onTipStars,
   onToggleSave,
+  onViewProfile,
 }) => {
   const [showReactionsPopup, setShowReactionsPopup] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
@@ -58,12 +60,12 @@ export const PostCard: React.FC<PostCardProps> = ({
     }
   };
 
-  const handleShareToTelegram = () => {
+  const handleShare = () => {
     triggerHaptic('medium');
-    const shareUrl = window.location.href;
-    const text = `Check out this post by ${post.author.name} on TeleBook:\n"${post.content.slice(0, 100)}..."`;
-    shareToTelegram(shareUrl, text);
-    setShowShareModal(false);
+    shareToTelegram(
+      window.location.href,
+      `Check out this update by ${post.author.name} on TeleBook:\n"${post.content.slice(0, 100)}..."`
+    );
   };
 
   const handleCopyLink = () => {
@@ -78,12 +80,15 @@ export const PostCard: React.FC<PostCardProps> = ({
       
       {/* Header: Author Info, Time, Privacy, Menu */}
       <div className="p-3.5 flex items-start justify-between gap-2.5">
-        <div className="flex items-center gap-2.5">
+        <div 
+          onClick={() => onViewProfile && onViewProfile(post.author)}
+          className="flex items-center gap-2.5 cursor-pointer group"
+        >
           <div className="relative">
             <img
               src={post.author.avatar}
               alt={post.author.name}
-              className="w-10 h-10 rounded-full object-cover border border-slate-700 shadow-sm"
+              className="w-10 h-10 rounded-full object-cover border border-slate-700 shadow-sm group-hover:ring-2 group-hover:ring-sky-400 transition"
             />
             {post.author.isPremium && (
               <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-sky-500 text-[9px] font-bold text-white flex items-center justify-center border border-slate-900 shadow">
@@ -94,7 +99,7 @@ export const PostCard: React.FC<PostCardProps> = ({
 
           <div className="text-left leading-tight">
             <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="font-bold text-sm text-white hover:underline cursor-pointer">
+              <span className="font-bold text-sm text-white group-hover:text-sky-400 transition">
                 {post.author.name}
               </span>
               {post.author.isVerified && (
