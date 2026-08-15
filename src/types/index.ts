@@ -68,6 +68,7 @@ export interface Post {
   groupId?: string;
   groupName?: string;
   privacy: 'public' | 'friends' | 'telegram_contacts';
+  comments?: Comment[];
 }
 
 export interface Story {

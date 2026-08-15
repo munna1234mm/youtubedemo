@@ -217,14 +217,17 @@ export default function App() {
     }
   };
 
-  const handleReact = (postId: string, reactionType: ReactionType) => {
+  const handleReact = async (postId: string, reactionType: ReactionType) => {
+    let newSummary: any;
+    let diffVal = 1;
+
     setPosts((prev) =>
       prev.map((p) => {
         if (p.id !== postId) return p;
 
         const isSame = p.userReaction === reactionType;
         const newReaction = isSame ? undefined : reactionType;
-        const diff = isSame ? -1 : p.userReaction ? 0 : 1;
+        diffVal = isSame ? -1 : p.userReaction ? 0 : 1;
 
         const updatedSummary = { ...p.reactionsSummary };
         if (p.userReaction && updatedSummary[p.userReaction]) {
@@ -234,14 +237,71 @@ export default function App() {
           updatedSummary[reactionType] = (updatedSummary[reactionType] || 0) + 1;
         }
 
+        newSummary = updatedSummary;
+
         return {
           ...p,
           userReaction: newReaction,
-          likesCount: Math.max(0, p.likesCount + diff),
+          likesCount: Math.max(0, p.likesCount + diffVal),
           reactionsSummary: updatedSummary,
         };
       })
     );
+
+    try {
+      await fetch(`/api/posts/${postId}/react`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reactionType, diff: diffVal, summary: newSummary }),
+      });
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleAddComment = async (text: string, parentCommentId?: string, image?: string) => {
+    if (!activeCommentsPostId) return;
+
+    const newComment = {
+      id: `c_${Date.now()}`,
+      userId: currentUser.id,
+      userName: currentUser.name,
+      userAvatar: currentUser.avatar,
+      isPremium: currentUser.isPremium || false,
+      text,
+      image,
+      timestamp: 'Just now',
+      likesCount: 0,
+      isLiked: false,
+      replies: [],
+    };
+
+    setPosts((prev) =>
+      prev.map((p) => {
+        if (p.id !== activeCommentsPostId) return p;
+        const currentComments = p.comments || [];
+        return {
+          ...p,
+          comments: [newComment, ...currentComments],
+          commentsCount: (p.commentsCount || 0) + 1,
+        };
+      })
+    );
+
+    try {
+      await fetch(`/api/posts/${activeCommentsPostId}/comment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user: currentUser,
+          text,
+          image,
+          parentCommentId,
+        }),
+      });
+    } catch {
+      // ignore
+    }
   };
 
   const handleVotePoll = (postId: string, optionId: string) => {
@@ -374,22 +434,6 @@ export default function App() {
     });
 
     triggerHaptic('success');
-  };
-
-  // Comments handlers
-  const handleAddComment = (text: string, parentCommentId?: string, image?: string) => {
-    if (!activeCommentsPostId) return;
-
-    setPosts((prev) =>
-      prev.map((p) => {
-        if (p.id !== activeCommentsPostId) return p;
-
-        return {
-          ...p,
-          commentsCount: p.commentsCount + 1,
-        };
-      })
-    );
   };
 
   // Marketplace & Groups handlers
@@ -707,45 +751,12 @@ export default function App() {
           />
         )}
 
-        {/* Comments Drawer */}
+        {/* Comments Drawer (Real-Time Comments) */}
         {activeCommentsPostId && activeCommentsPost && (
           <CommentsDrawer
             postAuthorName={activeCommentsPost.author.name}
             currentUser={currentUser}
-            comments={[
-              {
-                id: 'c1',
-                userId: 'user_2',
-                userName: 'Elena Rostova',
-                userAvatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80',
-                isPremium: true,
-                text: 'The user interface feels so lightweight and fast compared to standard mobile apps! 🚀',
-                timestamp: '25m ago',
-                likesCount: 14,
-                isLiked: false,
-                replies: [
-                  {
-                    id: 'c1_r1',
-                    userId: 'user_3',
-                    userName: 'Marcus Chen',
-                    userAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
-                    text: 'Agreed, Telegram WebApp SDK handles haptics and theme syncing flawlessly.',
-                    timestamp: '10m ago',
-                    likesCount: 4,
-                  },
-                ],
-              },
-              {
-                id: 'c2',
-                userId: 'user_5',
-                userName: 'David Miller',
-                userAvatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
-                text: 'Already testing the Marketplace checkout flow with TG Stars ⭐ Super seamless.',
-                timestamp: '1h ago',
-                likesCount: 6,
-                isLiked: true,
-              },
-            ]}
+            comments={activeCommentsPost.comments || []}
             onClose={() => setActiveCommentsPostId(null)}
             onAddComment={handleAddComment}
             onLikeComment={(cId) => triggerHaptic('light')}

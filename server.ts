@@ -347,7 +347,7 @@ app.post('/api/messages', (req, res) => {
   res.json({ success: true, message: newMsg });
 });
 
-// 4. Posts API
+// 4. Posts API (Global Social Feed, Comments & Reactions)
 app.get('/api/posts', (req, res) => {
   res.json({ success: true, posts: db.posts });
 });
@@ -360,11 +360,77 @@ app.post('/api/posts', (req, res) => {
     id: post.id || `post_${Date.now()}`,
     ...post,
     timestamp: 'Just now',
+    comments: post.comments || [],
+    commentsCount: post.commentsCount || 0,
+    likesCount: post.likesCount || 0,
+    reactionsSummary: post.reactionsSummary || {},
   };
 
   db.posts.unshift(newPost);
   saveDb();
   res.json({ success: true, post: newPost });
+});
+
+// React on any post
+app.post('/api/posts/:id/react', (req, res) => {
+  const { id } = req.params;
+  const { reactionType, diff, summary } = req.body;
+
+  const post = db.posts.find((p) => p.id === id);
+  if (!post) {
+    return res.status(404).json({ error: 'Post not found' });
+  }
+
+  post.likesCount = Math.max(0, (post.likesCount || 0) + (diff || 0));
+  if (summary) {
+    post.reactionsSummary = summary;
+  }
+
+  saveDb();
+  res.json({ success: true, post });
+});
+
+// Add comment to any post
+app.post('/api/posts/:id/comment', (req, res) => {
+  const { id } = req.params;
+  const { user, text, image, parentCommentId } = req.body;
+
+  const post = db.posts.find((p) => p.id === id);
+  if (!post) {
+    return res.status(404).json({ error: 'Post not found' });
+  }
+
+  if (!post.comments) post.comments = [];
+
+  const newComment = {
+    id: `c_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+    userId: user.id,
+    userName: user.name,
+    userAvatar: user.avatar,
+    isPremium: user.isPremium || false,
+    text: text || '',
+    image: image || undefined,
+    timestamp: 'Just now',
+    likesCount: 0,
+    isLiked: false,
+    replies: [],
+  };
+
+  if (parentCommentId) {
+    const parent = post.comments.find((c: any) => c.id === parentCommentId);
+    if (parent) {
+      if (!parent.replies) parent.replies = [];
+      parent.replies.push(newComment);
+    } else {
+      post.comments.push(newComment);
+    }
+  } else {
+    post.comments.push(newComment);
+  }
+
+  post.commentsCount = (post.commentsCount || 0) + 1;
+  saveDb();
+  res.json({ success: true, post, comment: newComment });
 });
 
 // Start server with Vite middleware in dev & static dist in prod
