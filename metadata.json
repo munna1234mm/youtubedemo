@@ -1,0 +1,6 @@
+{
+  "name": "TeleBook - Telegram Social Mini App",
+  "description": "A Facebook-inspired Telegram Mini App featuring Stories, Reels, Feed with rich reactions & comments, Marketplace, Groups, Messenger chat, and TG Stars gifting.",
+  "requestFramePermissions": ["camera", "microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
