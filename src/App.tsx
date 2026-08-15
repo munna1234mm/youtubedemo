@@ -519,6 +519,150 @@ export default function App() {
     setActiveTab(tab);
   };
 
+  const handleStartBackgroundUpload = async (taskData: {
+    file: File | null;
+    previewUrl: string;
+    title: string;
+    caption: string;
+    target: 'reels' | 'stories' | 'post';
+  }) => {
+    const taskId = `task_${Date.now()}`;
+    
+    // Initialize floating bar immediately
+    setUploadTask({
+      id: taskId,
+      title: taskData.title || (taskData.target === 'reels' ? 'Reel Video' : 'Video Upload'),
+      target: taskData.target,
+      progress: 15,
+      previewUrl: taskData.previewUrl,
+      status: 'uploading',
+      statusText: 'Uploading in background…',
+    });
+
+    let currentPct = 15;
+    const progressInterval = setInterval(() => {
+      currentPct = Math.min(88, currentPct + Math.floor(Math.random() * 15 + 8));
+      setUploadTask((prev) =>
+        prev && prev.id === taskId
+          ? {
+              ...prev,
+              progress: currentPct,
+              status: currentPct > 60 ? 'processing' : 'uploading',
+              statusText: currentPct > 60 ? 'Processing & optimizing quality…' : 'Uploading in background…',
+            }
+          : prev
+      );
+    }, 400);
+
+    try {
+      let videoUrl = taskData.previewUrl;
+
+      if (taskData.file) {
+        const formData = new FormData();
+        formData.append('video', taskData.file);
+        formData.append('title', taskData.title || 'Video');
+        formData.append('authorId', currentUser.id);
+        formData.append('authorName', currentUser.name);
+        formData.append('authorAvatar', currentUser.avatar);
+        formData.append('authorUsername', currentUser.username);
+
+        const res = await fetch('/api/upload/video', {
+          method: 'POST',
+          body: formData,
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.video?.url) {
+            videoUrl = data.video.url;
+          }
+        }
+      } else {
+        await fetch('/api/upload/video', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            videoUrl: taskData.previewUrl,
+            title: taskData.title || 'Video',
+            authorId: currentUser.id,
+            authorName: currentUser.name,
+            authorAvatar: currentUser.avatar,
+            authorUsername: currentUser.username,
+          }),
+        });
+      }
+
+      clearInterval(progressInterval);
+
+      // Publish to respective feed
+      if (taskData.target === 'reels') {
+        const newReel: Reel = {
+          id: `reel_${Date.now()}`,
+          author: currentUser,
+          videoUrl,
+          thumbnailUrl: currentUser.avatar,
+          caption: taskData.caption || taskData.title || 'New Reel',
+          audioName: `Original Audio · ${currentUser.name}`,
+          likesCount: 1,
+          commentsCount: 0,
+          sharesCount: 0,
+          isLiked: true,
+        };
+        setReels((prev) => [newReel, ...prev]);
+      } else if (taskData.target === 'stories') {
+        const newStory: Story = {
+          id: `story_${Date.now()}`,
+          userId: currentUser.id,
+          userName: currentUser.name,
+          userAvatar: currentUser.avatar,
+          isPremium: currentUser.isPremium,
+          mediaUrl: videoUrl,
+          mediaType: 'video',
+          caption: taskData.caption || taskData.title,
+          timestamp: 'Just now',
+          likesCount: 0,
+        };
+        setStories((prev) => [newStory, ...prev]);
+      } else {
+        handleCreatePost({
+          content: `🎬 ${taskData.title}\n${taskData.caption}`,
+          videoUrl,
+        });
+      }
+
+      // Set 100% done
+      setUploadTask((prev) =>
+        prev && prev.id === taskId
+          ? {
+              ...prev,
+              progress: 100,
+              status: 'done',
+              statusText: 'Published successfully! 🎉',
+            }
+          : prev
+      );
+
+      triggerHaptic('success');
+      fireConfetti();
+
+      // Auto dismiss toast after 3.5s
+      setTimeout(() => {
+        setUploadTask((prev) => (prev && prev.id === taskId ? null : prev));
+      }, 3500);
+    } catch {
+      clearInterval(progressInterval);
+      setUploadTask((prev) =>
+        prev && prev.id === taskId
+          ? {
+              ...prev,
+              status: 'error',
+              statusText: 'Upload failed. Tap to retry.',
+            }
+          : prev
+      );
+      triggerHaptic('warning');
+    }
+  };
+
   return (
     <TelegramFrameWrapper
       isFrameMode={isFrameMode}
@@ -817,6 +961,7 @@ export default function App() {
               handleCreatePost(newPost);
               setActiveTab('feed');
             }}
+            onStartBackgroundUpload={handleStartBackgroundUpload}
           />
         )}
 
@@ -835,6 +980,7 @@ export default function App() {
               setReels([newReel, ...reels]);
               setActiveTab('reels');
             }}
+            onStartBackgroundUpload={handleStartBackgroundUpload}
           />
         )}
 

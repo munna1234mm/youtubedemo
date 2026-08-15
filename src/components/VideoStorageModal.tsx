@@ -25,6 +25,13 @@ interface VideoStorageModalProps {
   onAddReel: (reel: Reel) => void;
   onAddStory: (story: Story) => void;
   onAddPost: (post: Partial<Post>) => void;
+  onStartBackgroundUpload?: (task: {
+    file: File | null;
+    previewUrl: string;
+    title: string;
+    caption: string;
+    target: 'reels' | 'stories' | 'post';
+  }) => void;
 }
 
 /* ─── Upload status steps (Facebook-style) ───────────────── */
@@ -44,6 +51,7 @@ export const VideoStorageModal: React.FC<VideoStorageModalProps> = ({
   onAddReel,
   onAddStory,
   onAddPost,
+  onStartBackgroundUpload,
 }) => {
   const [tab, setTab] = useState<'upload' | 'library'>('upload');
   const [videos, setVideos] = useState<StoredVideoItem[]>([]);
@@ -125,6 +133,20 @@ export const VideoStorageModal: React.FC<VideoStorageModalProps> = ({
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!previewUrl) return;
+
+    if (onStartBackgroundUpload) {
+      triggerHaptic('success');
+      onStartBackgroundUpload({
+        file: selectedFile,
+        previewUrl,
+        title: videoTitle || 'Video',
+        caption: videoCaption || '',
+        target: publishTarget,
+      });
+      onClose();
+      return;
+    }
+
     setUploading(true);
     setDone(false);
     setError(null);

@@ -8,6 +8,13 @@ interface CreateStoryModalProps {
   onClose: () => void;
   onAddStory: (story: Story) => void;
   onAddReel: (reel: Reel) => void;
+  onStartBackgroundUpload?: (task: {
+    file: File | null;
+    previewUrl: string;
+    title: string;
+    caption: string;
+    target: 'reels' | 'stories' | 'post';
+  }) => void;
 }
 
 export const CreateStoryModal: React.FC<CreateStoryModalProps> = ({
@@ -15,6 +22,7 @@ export const CreateStoryModal: React.FC<CreateStoryModalProps> = ({
   onClose,
   onAddStory,
   onAddReel,
+  onStartBackgroundUpload,
 }) => {
   const [mediaPreview, setMediaPreview] = useState<string | null>(null);
   const [mediaType, setMediaType] = useState<'image' | 'video'>('image');
@@ -77,6 +85,20 @@ export const CreateStoryModal: React.FC<CreateStoryModalProps> = ({
 
   const handlePublish = async () => {
     if (!mediaPreview) return;
+
+    if (mediaType === 'video' && onStartBackgroundUpload) {
+      triggerHaptic('success');
+      onStartBackgroundUpload({
+        file: selectedFile,
+        previewUrl: mediaPreview,
+        title: caption || (publishAs === 'reel' ? 'New Reel' : 'Story Video'),
+        caption: caption || '',
+        target: publishAs === 'reel' ? 'reels' : 'stories',
+      });
+      onClose();
+      return;
+    }
+
     setUploading(true);
     setError(null);
     triggerHaptic('medium');
