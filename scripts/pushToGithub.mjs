@@ -47,6 +47,13 @@ async function main() {
     console.log('Commit note:', err.message);
   }
 
+  console.log('Ensuring branch main...');
+  try {
+    await git.branch({ fs, dir, ref: 'main', checkout: true });
+  } catch (e) {
+    console.log('Branch note:', e.message);
+  }
+
   console.log(`Setting remote to ${remoteUrl}...`);
   try {
     await git.removeRemote({ fs, dir, remote: 'origin' });
