@@ -52,6 +52,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   viewedUser,
   onBackToMyProfile,
   onOpenChat,
+  onOpenAuthModal,
+  onLogout,
   posts,
   savedPosts,
   onUpdateBio,
