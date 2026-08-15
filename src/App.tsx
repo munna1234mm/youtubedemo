@@ -7,7 +7,8 @@ import {
   Sparkles, 
   TrendingUp, 
   Filter, 
-  RefreshCw 
+  RefreshCw,
+  RotateCcw 
 } from 'lucide-react';
 import { 
   User, 
