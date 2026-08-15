@@ -74,39 +74,44 @@ export default function App() {
     triggerHaptic('medium');
   };
 
+  const safeSetItem = (key: string, value: any) => {
+    try {
+      localStorage.setItem(key, JSON.stringify(value));
+    } catch (e) {
+      // If quota exceeded, remove large cached items
+      try {
+        localStorage.removeItem('tb_posts');
+        localStorage.removeItem('tb_stories');
+      } catch {}
+    }
+  };
+
   const [posts, setPosts] = useState<Post[]>(() => {
-    const saved = localStorage.getItem('tb_posts');
-    return saved ? JSON.parse(saved) : INITIAL_POSTS;
+    return INITIAL_POSTS;
   });
 
   const [stories, setStories] = useState<Story[]>(() => {
-    const saved = localStorage.getItem('tb_stories');
-    return saved ? JSON.parse(saved) : INITIAL_STORIES;
+    return INITIAL_STORIES;
   });
 
   const [reels, setReels] = useState<Reel[]>(() => {
-    const saved = localStorage.getItem('tb_reels');
-    return saved ? JSON.parse(saved) : INITIAL_REELS;
+    return INITIAL_REELS;
   });
 
   const [marketplaceItems, setMarketplaceItems] = useState<MarketplaceItem[]>(() => {
-    const saved = localStorage.getItem('tb_marketplace');
-    return saved ? JSON.parse(saved) : INITIAL_MARKETPLACE;
+    return INITIAL_MARKETPLACE;
   });
 
   const [groups, setGroups] = useState<Group[]>(() => {
-    const saved = localStorage.getItem('tb_groups');
-    return saved ? JSON.parse(saved) : INITIAL_GROUPS;
+    return INITIAL_GROUPS;
   });
 
   const [chats, setChats] = useState<ChatThread[]>(() => {
-    const saved = localStorage.getItem('tb_chats');
-    return saved ? JSON.parse(saved) : INITIAL_CHATS;
+    return INITIAL_CHATS;
   });
 
   const [notifications, setNotifications] = useState<NotificationItem[]>(() => {
-    const saved = localStorage.getItem('tb_notifications');
-    return saved ? JSON.parse(saved) : INITIAL_NOTIFICATIONS;
+    return INITIAL_NOTIFICATIONS;
   });
 
   // UI state
@@ -141,34 +146,12 @@ export default function App() {
       .catch(() => {});
   }, []);
 
-  // Sync to localStorage
+  // Sync safe lightweight state to localStorage
   useEffect(() => {
-    localStorage.setItem('tb_user', JSON.stringify(currentUser));
+    if (currentUser) {
+      safeSetItem('tb_user', currentUser);
+    }
   }, [currentUser]);
-
-  useEffect(() => {
-    localStorage.setItem('tb_posts', JSON.stringify(posts));
-  }, [posts]);
-
-  useEffect(() => {
-    localStorage.setItem('tb_stories', JSON.stringify(stories));
-  }, [stories]);
-
-  useEffect(() => {
-    localStorage.setItem('tb_marketplace', JSON.stringify(marketplaceItems));
-  }, [marketplaceItems]);
-
-  useEffect(() => {
-    localStorage.setItem('tb_groups', JSON.stringify(groups));
-  }, [groups]);
-
-  useEffect(() => {
-    localStorage.setItem('tb_chats', JSON.stringify(chats));
-  }, [chats]);
-
-  useEffect(() => {
-    localStorage.setItem('tb_notifications', JSON.stringify(notifications));
-  }, [notifications]);
 
   // Live real-time notification sync from server
   useEffect(() => {
