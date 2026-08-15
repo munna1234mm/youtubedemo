@@ -170,6 +170,31 @@ export default function App() {
     localStorage.setItem('tb_notifications', JSON.stringify(notifications));
   }, [notifications]);
 
+  // Live real-time notification sync from server
+  useEffect(() => {
+    if (!currentUser?.id) return;
+
+    const fetchLiveNotifs = async () => {
+      try {
+        const res = await fetch(`/api/notifications?userId=${currentUser.id}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.notifications && data.notifications.length > 0) {
+            setNotifications((prev) => {
+              const serverIds = new Set(data.notifications.map((n: any) => n.id));
+              const locals = prev.filter((p) => !serverIds.has(p.id));
+              return [...data.notifications, ...locals];
+            });
+          }
+        }
+      } catch {}
+    };
+
+    fetchLiveNotifs();
+    const interval = setInterval(fetchLiveNotifs, 2500);
+    return () => clearInterval(interval);
+  }, [currentUser?.id]);
+
   // Initialize Telegram WebApp SDK if available
   useEffect(() => {
     const tg = getTelegramWebApp();

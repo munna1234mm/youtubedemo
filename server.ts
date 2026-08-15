@@ -453,8 +453,50 @@ app.post('/api/messages', (req, res) => {
   };
 
   db.messages.push(newMsg);
+
+  // Generate real-time notification for receiver
+  if (!db.notifications) db.notifications = [];
+  const senderUser = db.users.find((u) => u.id === senderId);
+  db.notifications.unshift({
+    id: `notif_${Date.now()}`,
+    recipientId: receiverId,
+    type: 'message',
+    actorName: senderUser?.name || 'A Member',
+    actorAvatar: senderUser?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+    text: `Sent you a message: "${text ? text.slice(0, 50) : 'media'}"`,
+    timestamp: 'Just now',
+    isRead: false,
+    chatUserId: senderId,
+  });
+
   saveDb();
   res.json({ success: true, message: newMsg });
+});
+
+// Notifications API
+app.get('/api/notifications', (req, res) => {
+  const { userId } = req.query;
+  if (!db.notifications) db.notifications = [];
+  if (!userId) return res.json({ success: true, notifications: db.notifications });
+
+  const userNotifs = db.notifications.filter((n: any) => n.recipientId === userId);
+  res.json({ success: true, notifications: userNotifs });
+});
+
+app.post('/api/notifications/read', (req, res) => {
+  const { userId, notifId } = req.body;
+  if (!db.notifications) db.notifications = [];
+
+  if (notifId) {
+    const item = db.notifications.find((n: any) => n.id === notifId);
+    if (item) item.isRead = true;
+  } else if (userId) {
+    db.notifications.forEach((n: any) => {
+      if (n.recipientId === userId) n.isRead = true;
+    });
+  }
+  saveDb();
+  res.json({ success: true });
 });
 
 // 4. Posts API (Global Social Feed, Comments & Reactions)
@@ -484,7 +526,7 @@ app.post('/api/posts', (req, res) => {
 // React on any post
 app.post('/api/posts/:id/react', (req, res) => {
   const { id } = req.params;
-  const { reactionType, diff, summary } = req.body;
+  const { reactionType, diff, summary, user } = req.body;
 
   const post = db.posts.find((p) => p.id === id);
   if (!post) {
@@ -494,6 +536,21 @@ app.post('/api/posts/:id/react', (req, res) => {
   post.likesCount = Math.max(0, (post.likesCount || 0) + (diff || 0));
   if (summary) {
     post.reactionsSummary = summary;
+  }
+
+  if (user && post.author?.id && post.author.id !== user.id && diff > 0) {
+    if (!db.notifications) db.notifications = [];
+    db.notifications.unshift({
+      id: `notif_${Date.now()}`,
+      recipientId: post.author.id,
+      type: 'like',
+      actorName: user.name || 'Someone',
+      actorAvatar: user.avatar || '',
+      text: `Reacted to your post`,
+      timestamp: 'Just now',
+      isRead: false,
+      postId: post.id,
+    });
   }
 
   saveDb();
@@ -539,6 +596,23 @@ app.post('/api/posts/:id/comment', (req, res) => {
   }
 
   post.commentsCount = (post.commentsCount || 0) + 1;
+
+  // Real-time notification for post author
+  if (post.author?.id && post.author.id !== user.id) {
+    if (!db.notifications) db.notifications = [];
+    db.notifications.unshift({
+      id: `notif_${Date.now()}`,
+      recipientId: post.author.id,
+      type: 'comment',
+      actorName: user.name,
+      actorAvatar: user.avatar,
+      text: `Commented on your post: "${text ? text.slice(0, 50) : 'image'}"`,
+      timestamp: 'Just now',
+      isRead: false,
+      postId: post.id,
+    });
+  }
+
   saveDb();
   res.json({ success: true, post, comment: newComment });
 });
