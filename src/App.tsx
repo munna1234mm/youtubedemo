@@ -60,13 +60,19 @@ import { FloatingUploadBar, UploadTask } from './components/FloatingUploadBar';
 import { AuthModal } from './components/AuthModal';
 
 export default function App() {
-  // Local state with localStorage persistence
-  const [currentUser, setCurrentUser] = useState<User>(() => {
+  // Local state with localStorage persistence (null initially if not logged in)
+  const [currentUser, setCurrentUser] = useState<User | null>(() => {
     const saved = localStorage.getItem('tb_user');
-    return saved ? JSON.parse(saved) : CURRENT_USER;
+    return saved ? JSON.parse(saved) : null;
   });
 
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+
+  const handleLogout = () => {
+    localStorage.removeItem('tb_user');
+    setCurrentUser(null);
+    triggerHaptic('medium');
+  };
 
   const [posts, setPosts] = useState<Post[]>(() => {
     const saved = localStorage.getItem('tb_posts');
@@ -666,6 +672,26 @@ export default function App() {
     }
   };
 
+  if (!currentUser) {
+    return (
+      <TelegramFrameWrapper
+        isFrameMode={isFrameMode}
+        onCloseApp={() => {
+          const tg = getTelegramWebApp();
+          if (tg) tg.close();
+        }}
+      >
+        <AuthModal
+          onLoginSuccess={(loggedInUser) => {
+            setCurrentUser(loggedInUser);
+            localStorage.setItem('tb_user', JSON.stringify(loggedInUser));
+            setIsAuthModalOpen(false);
+          }}
+        />
+      </TelegramFrameWrapper>
+    );
+  }
+
   return (
     <TelegramFrameWrapper
       isFrameMode={isFrameMode}
@@ -879,8 +905,9 @@ export default function App() {
               posts={posts}
               savedPosts={posts.filter((p) => p.isSaved)}
               onOpenAuthModal={() => setIsAuthModalOpen(true)}
+              onLogout={handleLogout}
               onUpdateBio={(newBio) => {
-                setCurrentUser((prev) => ({ ...prev, bio: newBio }));
+                setCurrentUser((prev) => (prev ? { ...prev, bio: newBio } : null));
               }}
               onOpenStarsModal={() => setIsStarsModalOpen(true)}
               onOpenVideoStorage={() => setIsVideoStorageOpen(true)}

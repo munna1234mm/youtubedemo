@@ -19,7 +19,8 @@ import {
   Film,
   ArrowLeft,
   MessageCircle,
-  Plus
+  Plus,
+  LogOut
 } from 'lucide-react';
 import { User, Post, TabType } from '../types';
 import { triggerHaptic, fireConfetti, shareToTelegram } from '../utils/telegram';
@@ -31,6 +32,7 @@ interface ProfileViewProps {
   onBackToMyProfile?: () => void;
   onOpenChat?: (user: User) => void;
   onOpenAuthModal?: () => void;
+  onLogout?: () => void;
   posts: Post[];
   savedPosts: Post[];
   onUpdateBio: (bio: string) => void;
@@ -475,6 +477,22 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                   <span>Switch Account / Sign In as Another User</span>
                 </div>
                 <span className="text-[11px] font-bold text-sky-400">Login ➔</span>
+              </button>
+            )}
+
+            {onLogout && (
+              <button
+                onClick={() => {
+                  triggerHaptic('warning');
+                  onLogout();
+                }}
+                className="w-full flex items-center justify-between p-3 bg-rose-500/10 hover:bg-rose-500/20 rounded-xl border border-rose-500/30 text-left transition"
+              >
+                <div className="flex items-center gap-2.5 text-xs text-rose-400 font-bold">
+                  <LogOut className="w-4 h-4 text-rose-400" />
+                  <span>Log Out of Account</span>
+                </div>
+                <span className="text-[11px] font-bold text-rose-400">Exit ➔</span>
               </button>
             )}
 
