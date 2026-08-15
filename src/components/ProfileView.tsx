@@ -30,6 +30,7 @@ interface ProfileViewProps {
   viewedUser?: User | null;
   onBackToMyProfile?: () => void;
   onOpenChat?: (user: User) => void;
+  onOpenAuthModal?: () => void;
   posts: Post[];
   savedPosts: Post[];
   onUpdateBio: (bio: string) => void;
@@ -461,6 +462,22 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-4 shadow-md">
           <h3 className="text-sm font-bold text-white">App & Profile Settings</h3>
           <div className="space-y-2">
+            {onOpenAuthModal && (
+              <button
+                onClick={() => {
+                  triggerHaptic('medium');
+                  onOpenAuthModal();
+                }}
+                className="w-full flex items-center justify-between p-3 bg-gradient-to-r from-sky-500/20 to-blue-500/20 rounded-xl border border-sky-500/40 text-left hover:brightness-110 transition"
+              >
+                <div className="flex items-center gap-2.5 text-xs text-sky-300 font-bold">
+                  <Smartphone className="w-4 h-4 text-sky-400" />
+                  <span>Switch Account / Sign In as Another User</span>
+                </div>
+                <span className="text-[11px] font-bold text-sky-400">Login ➔</span>
+              </button>
+            )}
+
             <div className="flex items-center justify-between p-3 bg-slate-800/60 rounded-xl border border-slate-700/60">
               <div className="flex items-center gap-2.5 text-xs text-slate-200">
                 <Moon className="w-4 h-4 text-sky-400" />

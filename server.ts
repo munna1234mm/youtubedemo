@@ -280,9 +280,113 @@ app.delete('/api/videos/:id', async (req, res) => {
   res.json({ success: true, message: 'Video deleted', id });
 });
 
-// 2. Users API
+// 2. Users & Auth API (Dual Telegram & Email/Password Sign Up)
 app.get('/api/users', (req, res) => {
-  res.json({ success: true, users: db.users });
+  const now = Date.now();
+  const usersWithOnlineStatus = (db.users || []).map((u: any) => ({
+    ...u,
+    isOnline: Boolean(u.lastActive && now - u.lastActive < 60000) || u.isOnline || false,
+    lastSeen: u.lastActive ? new Date(u.lastActive).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recently',
+  }));
+  res.json({ success: true, users: usersWithOnlineStatus });
+});
+
+// Heartbeat to keep user live/online
+app.post('/api/users/heartbeat', (req, res) => {
+  const { userId } = req.body;
+  if (userId) {
+    const user = db.users.find((u) => u.id === userId);
+    if (user) {
+      (user as any).lastActive = Date.now();
+      (user as any).isOnline = true;
+      saveDb();
+    }
+  }
+  res.json({ success: true });
+});
+
+// Register with Email/Password or Custom Profile
+app.post('/api/auth/register', (req, res) => {
+  const { name, email, password, username, avatar, bio } = req.body;
+  if (!name || (!email && !username)) {
+    return res.status(400).json({ error: 'Name and email or username are required' });
+  }
+
+  const cleanUsername = (username || email.split('@')[0]).toLowerCase().replace(/[^a-z0-9_]/g, '');
+  const existing = db.users.find((u: any) => (email && u.email === email) || u.username === cleanUsername);
+
+  if (existing) {
+    (existing as any).lastActive = Date.now();
+    (existing as any).isOnline = true;
+    saveDb();
+    return res.json({ success: true, user: existing, message: 'Existing account found' });
+  }
+
+  const newUser: any = {
+    id: `u_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+    name: name.trim(),
+    email: email || '',
+    password: password || '',
+    username: cleanUsername,
+    avatar: avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+    bio: bio || 'TeleBook Member 🚀',
+    isVerified: false,
+    isPremium: false,
+    starsCount: 100,
+    followersCount: 0,
+    followingCount: 0,
+    friendsCount: 0,
+    isOnline: true,
+    lastActive: Date.now(),
+    authProvider: email ? 'email' : 'telegram',
+  };
+
+  db.users.unshift(newUser);
+  saveDb();
+  res.json({ success: true, user: newUser });
+});
+
+// Login (Email or Telegram manual login)
+app.post('/api/auth/login', (req, res) => {
+  const { email, password, telegramUser } = req.body;
+
+  if (telegramUser) {
+    const tgId = `tg_${telegramUser.id}`;
+    let user = db.users.find((u) => u.id === tgId || u.username === telegramUser.username);
+    if (!user) {
+      user = {
+        id: tgId,
+        name: `${telegramUser.first_name || ''} ${telegramUser.last_name || ''}`.trim() || 'Telegram User',
+        username: telegramUser.username || `tg_user_${telegramUser.id}`,
+        avatar: telegramUser.photo_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+        bio: 'Connected with Telegram ✈️',
+        isVerified: true,
+        isPremium: Boolean(telegramUser.is_premium),
+        starsCount: 250,
+        followersCount: 15,
+        followingCount: 5,
+        friendsCount: 10,
+      };
+      db.users.unshift(user);
+    }
+    (user as any).lastActive = Date.now();
+    (user as any).isOnline = true;
+    saveDb();
+    return res.json({ success: true, user });
+  }
+
+  if (email && password) {
+    const user = db.users.find((u: any) => u.email === email && (!u.password || u.password === password));
+    if (user) {
+      (user as any).lastActive = Date.now();
+      (user as any).isOnline = true;
+      saveDb();
+      return res.json({ success: true, user });
+    }
+    return res.status(401).json({ error: 'Invalid email or password' });
+  }
+
+  res.status(400).json({ error: 'Invalid login credentials' });
 });
 
 app.post('/api/users', (req, res) => {
@@ -291,7 +395,12 @@ app.post('/api/users', (req, res) => {
 
   const existingIdx = db.users.findIndex((u) => u.id === user.id);
   if (existingIdx >= 0) {
-    db.users[existingIdx] = { ...db.users[existingIdx], ...user, isOnline: true };
+    db.users[existingIdx] = { 
+      ...db.users[existingIdx], 
+      ...user, 
+      isOnline: true,
+      lastActive: Date.now() 
+    };
   } else {
     db.users.unshift({
       id: user.id,
@@ -306,6 +415,7 @@ app.post('/api/users', (req, res) => {
       followingCount: user.followingCount || 0,
       friendsCount: user.friendsCount || 0,
       isOnline: true,
+      lastActive: Date.now(),
     });
   }
   saveDb();

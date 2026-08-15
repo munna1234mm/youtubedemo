@@ -57,6 +57,7 @@ import { TelegramFrameWrapper } from './components/TelegramFrameWrapper';
 import { VideoStorageModal } from './components/VideoStorageModal';
 import { CreateStoryModal } from './components/CreateStoryModal';
 import { FloatingUploadBar, UploadTask } from './components/FloatingUploadBar';
+import { AuthModal } from './components/AuthModal';
 
 export default function App() {
   // Local state with localStorage persistence
@@ -64,6 +65,8 @@ export default function App() {
     const saved = localStorage.getItem('tb_user');
     return saved ? JSON.parse(saved) : CURRENT_USER;
   });
+
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   const [posts, setPosts] = useState<Post[]>(() => {
     const saved = localStorage.getItem('tb_posts');
@@ -875,6 +878,7 @@ export default function App() {
               onOpenChat={(user) => setActiveChatParticipant(user)}
               posts={posts}
               savedPosts={posts.filter((p) => p.isSaved)}
+              onOpenAuthModal={() => setIsAuthModalOpen(true)}
               onUpdateBio={(newBio) => {
                 setCurrentUser((prev) => ({ ...prev, bio: newBio }));
               }}
@@ -986,6 +990,18 @@ export default function App() {
 
         {/* Facebook-style Background Floating Upload Bar */}
         <FloatingUploadBar task={uploadTask} onDismiss={() => setUploadTask(null)} />
+
+        {/* Dual Sign-up & Login Modal (Telegram & Email/Password) */}
+        {isAuthModalOpen && (
+          <AuthModal
+            onLoginSuccess={(loggedInUser) => {
+              setCurrentUser(loggedInUser);
+              localStorage.setItem('tb_user', JSON.stringify(loggedInUser));
+              setIsAuthModalOpen(false);
+            }}
+            onClose={() => setIsAuthModalOpen(false)}
+          />
+        )}
 
     </TelegramFrameWrapper>
   );
