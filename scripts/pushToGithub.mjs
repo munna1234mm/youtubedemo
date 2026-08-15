@@ -70,7 +70,7 @@ async function main() {
     force: true,
     onAuth: () => {
       if (token) {
-        return { username: token, password: '' };
+        return { username: 'munna1234mm', password: token };
       }
       return undefined;
     },
