@@ -27,12 +27,24 @@ export const CreateStoryModal: React.FC<CreateStoryModalProps> = ({
   const videoInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
   const handleFileSelect = (file: File, type: 'image' | 'video') => {
     setError(null);
     setMediaType(type);
-    const url = URL.createObjectURL(file);
-    setMediaPreview(url);
-    if (type === 'video') setPublishAs('reel');
+    setSelectedFile(file);
+
+    if (type === 'image') {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setMediaPreview(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      const url = URL.createObjectURL(file);
+      setMediaPreview(url);
+      setPublishAs('reel');
+    }
     triggerHaptic('light');
   };
 
@@ -70,6 +82,34 @@ export const CreateStoryModal: React.FC<CreateStoryModalProps> = ({
     triggerHaptic('medium');
 
     try {
+      let finalMediaUrl = mediaPreview;
+
+      // If it's a video file and not yet uploaded, upload to server
+      if (mediaType === 'video' && selectedFile) {
+        const formData = new FormData();
+        formData.append('video', selectedFile);
+        formData.append('title', caption || 'Story Video');
+        formData.append('authorId', currentUser.id);
+        formData.append('authorName', currentUser.name);
+        formData.append('authorAvatar', currentUser.avatar);
+        formData.append('authorUsername', currentUser.username);
+
+        try {
+          const res = await fetch('/api/upload/video', {
+            method: 'POST',
+            body: formData,
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (data.video?.url) {
+              finalMediaUrl = data.video.url;
+            }
+          }
+        } catch {
+          // fallback to preview
+        }
+      }
+
       if (publishAs === 'story') {
         const newStory: Story = {
           id: `story_${Date.now()}`,
@@ -77,7 +117,7 @@ export const CreateStoryModal: React.FC<CreateStoryModalProps> = ({
           userName: currentUser.name,
           userAvatar: currentUser.avatar,
           isPremium: currentUser.isPremium,
-          mediaUrl: mediaPreview,
+          mediaUrl: finalMediaUrl,
           mediaType,
           caption: caption || undefined,
           timestamp: 'Just now',
@@ -88,7 +128,7 @@ export const CreateStoryModal: React.FC<CreateStoryModalProps> = ({
         const newReel: Reel = {
           id: `reel_${Date.now()}`,
           author: currentUser,
-          videoUrl: mediaPreview,
+          videoUrl: finalMediaUrl,
           thumbnailUrl: currentUser.avatar,
           caption: caption || 'New Reel',
           audioName: `Original Audio · ${currentUser.name}`,
