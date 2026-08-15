@@ -888,7 +888,8 @@ app.post('/api/posts/:id/comment', (req, res) => {
 
 // Start server with Vite middleware in dev & static dist in prod
 async function startServer() {
-  await initMongo();
+  // Connect to MongoDB Atlas in background
+  initMongo().catch((e) => console.warn('Mongo init warning:', e.message));
 
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
