@@ -711,6 +711,8 @@ export default function App() {
           unreadNotifsCount={unreadNotifsCount}
           onOpenStarsModal={() => setIsStarsModalOpen(true)}
           onOpenVideoStorage={() => setIsVideoStorageOpen(true)}
+          onOpenAuthModal={() => setIsAuthModalOpen(true)}
+          onLogout={handleLogout}
           isFrameMode={isFrameMode}
           setIsFrameMode={setIsFrameMode}
           searchQuery={searchQuery}
