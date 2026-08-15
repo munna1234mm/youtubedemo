@@ -271,11 +271,22 @@ export default function App() {
       await fetch(`/api/posts/${postId}/react`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reactionType, diff: diffVal, summary: newSummary }),
+        body: JSON.stringify({ reactionType, diff: diffVal, summary: newSummary, user: currentUser }),
       });
     } catch {
       // ignore
     }
+  };
+
+  const handleFollowUser = async (targetUser: User) => {
+    if (!currentUser) return;
+    try {
+      await fetch('/api/users/follow', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ follower: currentUser, targetUserId: targetUser.id }),
+      });
+    } catch {}
   };
 
   const handleAddComment = async (text: string, parentCommentId?: string, image?: string) => {
@@ -891,7 +902,16 @@ export default function App() {
               currentUser={currentUser}
               onMarkAllAsRead={() => {
                 setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+                if (currentUser) {
+                  fetch('/api/notifications/read', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId: currentUser.id }),
+                  }).catch(() => {});
+                }
               }}
+              onFollowBack={handleFollowUser}
+              onOpenChat={(actor) => setActiveChatParticipant(actor)}
               onSelectNotification={(item) => {
                 setNotifications((prev) =>
                   prev.map((n) => (n.id === item.id ? { ...n, isRead: true } : n))
@@ -900,6 +920,11 @@ export default function App() {
                   setActiveTab('marketplace');
                 } else if (item.type === 'like' || item.type === 'comment' || item.type === 'star') {
                   setActiveTab('feed');
+                } else if (item.type === 'message') {
+                  setActiveChatParticipant(item.actor);
+                } else if (item.type === 'follow' || item.type === 'friend_request') {
+                  setViewingProfileUser(item.actor);
+                  setActiveTab('profile');
                 }
               }}
             />

@@ -609,6 +609,31 @@ app.post('/api/posts', (req, res) => {
   res.json({ success: true, post: newPost });
 });
 
+// Follow / Friend Request API
+app.post('/api/users/follow', (req, res) => {
+  const { follower, targetUserId } = req.body;
+  if (!follower || !targetUserId) return res.status(400).json({ error: 'Invalid payload' });
+
+  const target = db.users.find((u) => u.id === targetUserId);
+  if (target) {
+    target.followersCount = (target.followersCount || 0) + 1;
+  }
+
+  if (!db.notifications) db.notifications = [];
+  db.notifications.unshift({
+    id: `notif_${Date.now()}`,
+    recipientId: targetUserId,
+    type: 'follow',
+    actor: follower,
+    message: 'sent you a friend request & started following you',
+    timestamp: 'Just now',
+    isRead: false,
+  });
+
+  saveDb();
+  res.json({ success: true });
+});
+
 // React on any post
 app.post('/api/posts/:id/react', (req, res) => {
   const { id } = req.params;
@@ -624,18 +649,29 @@ app.post('/api/posts/:id/react', (req, res) => {
     post.reactionsSummary = summary;
   }
 
-  if (user && post.author?.id && post.author.id !== user.id && diff > 0) {
+  if (user && post.author?.id && post.author.id !== user.id && (diff === undefined || diff > 0)) {
     if (!db.notifications) db.notifications = [];
+    const emojiMap: Record<string, string> = {
+      like: '👍 Like',
+      love: '❤️ Love',
+      haha: '😂 Haha',
+      wow: '😮 Wow',
+      sad: '😢 Sad',
+      angry: '😡 Angry',
+      star: '⭐ Star',
+    };
+    const reactionLabel = emojiMap[reactionType] || '👍';
+
     db.notifications.unshift({
       id: `notif_${Date.now()}`,
       recipientId: post.author.id,
       type: 'like',
-      actorName: user.name || 'Someone',
-      actorAvatar: user.avatar || '',
-      text: `Reacted to your post`,
+      actor: user,
+      message: `reacted ${reactionLabel} to your post: "${post.content ? post.content.slice(0, 45) : 'Media'}"`,
       timestamp: 'Just now',
       isRead: false,
-      postId: post.id,
+      targetId: post.id,
+      targetPreview: post.content ? `"${post.content.slice(0, 30)}..."` : 'Post Update',
     });
   }
 

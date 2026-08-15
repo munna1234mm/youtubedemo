@@ -156,13 +156,14 @@ export interface ChatThread {
 
 export interface NotificationItem {
   id: string;
-  type: 'like' | 'comment' | 'star' | 'friend_request' | 'group_invite' | 'marketplace';
+  type: 'like' | 'comment' | 'star' | 'friend_request' | 'follow' | 'group_invite' | 'marketplace' | 'message';
   actor: User;
   message: string;
   targetId?: string;
   targetPreview?: string;
   timestamp: string;
   isRead: boolean;
+  isFollowedBack?: boolean;
 }
 
 export type TabType = 'feed' | 'reels' | 'messenger' | 'marketplace' | 'groups' | 'notifications' | 'profile';
