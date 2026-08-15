@@ -90,9 +90,8 @@ export default function App() {
     return INITIAL_POSTS;
   });
 
-  const [stories, setStories] = useState<Story[]>(() => {
-    return INITIAL_STORIES;
-  });
+  // Stories live from server (demo stories removed)
+  const [stories, setStories] = useState<Story[]>([]);
 
   const [reels, setReels] = useState<Reel[]>(() => {
     return INITIAL_REELS;
@@ -130,7 +129,7 @@ export default function App() {
   const [uploadTask, setUploadTask] = useState<UploadTask | null>(null);
   const [viewingProfileUser, setViewingProfileUser] = useState<User | null>(null);
 
-  // Sync with persistent backend posts
+  // Sync with persistent backend posts & stories
   useEffect(() => {
     fetch('/api/posts')
       .then((r) => r.json())
@@ -144,6 +143,22 @@ export default function App() {
         }
       })
       .catch(() => {});
+
+    const fetchStories = async () => {
+      try {
+        const res = await fetch('/api/stories');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.stories) {
+            setStories(data.stories);
+          }
+        }
+      } catch {}
+    };
+
+    fetchStories();
+    const interval = setInterval(fetchStories, 3000);
+    return () => clearInterval(interval);
   }, []);
 
   // Sync safe lightweight state to localStorage
@@ -332,6 +347,17 @@ export default function App() {
     } catch {
       // ignore
     }
+  };
+
+  const handleAddNewStory = async (newStoryData: Story) => {
+    setStories((prev) => [newStoryData, ...prev]);
+    try {
+      await fetch('/api/stories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newStoryData),
+      });
+    } catch {}
   };
 
   const handleVotePoll = (postId: string, optionId: string) => {
@@ -1020,7 +1046,7 @@ export default function App() {
               setActiveTab('reels');
             }}
             onAddStory={(newStory) => {
-              setStories([newStory, ...stories]);
+              handleAddNewStory(newStory);
               setActiveTab('feed');
             }}
             onAddPost={(newPost) => {
@@ -1039,7 +1065,7 @@ export default function App() {
             currentUser={currentUser}
             onClose={() => setIsCreateStoryOpen(false)}
             onAddStory={(newStory) => {
-              setStories([newStory, ...stories]);
+              handleAddNewStory(newStory);
               setActiveTab('feed');
             }}
             onAddReel={(newReel) => {

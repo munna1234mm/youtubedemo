@@ -68,6 +68,8 @@ interface DbData {
   users: RegisteredUser[];
   messages: ChatMessage[];
   posts: any[];
+  stories: any[];
+  notifications?: any[];
 }
 
 const DEFAULT_COMMUNITY_USERS: RegisteredUser[] = [
@@ -632,6 +634,50 @@ app.post('/api/users/follow', (req, res) => {
 
   saveDb();
   res.json({ success: true });
+});
+
+// Stories API (Global Community Stories)
+app.get('/api/stories', (req, res) => {
+  res.json({ success: true, stories: db.stories || [] });
+});
+
+app.post('/api/stories', (req, res) => {
+  const story = req.body;
+  if (!story || !story.mediaUrl) {
+    return res.status(400).json({ error: 'Invalid story payload' });
+  }
+
+  if (!db.stories) db.stories = [];
+
+  const newStory = {
+    id: story.id || `story_${Date.now()}`,
+    userId: story.userId || 'user_anon',
+    userName: story.userName || 'TeleBook Member',
+    userAvatar: story.userAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+    isPremium: Boolean(story.isPremium),
+    mediaUrl: story.mediaUrl,
+    mediaType: story.mediaType || 'image',
+    caption: story.caption || '',
+    timestamp: 'Just now',
+    likesCount: 0,
+    isLiked: false,
+    createdAt: Date.now(),
+  };
+
+  db.stories.unshift(newStory);
+  saveDb();
+  res.json({ success: true, story: newStory });
+});
+
+app.post('/api/stories/:id/like', (req, res) => {
+  const { id } = req.params;
+  if (!db.stories) db.stories = [];
+  const story = db.stories.find((s) => s.id === id);
+  if (story) {
+    story.likesCount = (story.likesCount || 0) + 1;
+    saveDb();
+  }
+  res.json({ success: true, story });
 });
 
 // React on any post
