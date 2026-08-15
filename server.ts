@@ -3,6 +3,7 @@ import path from 'path';
 import fs from 'fs';
 import multer from 'multer';
 import { Storage } from '@google-cloud/storage';
+import { MongoClient, Db } from 'mongodb';
 import { createServer as createViteServer } from 'vite';
 
 const app = express();
@@ -10,6 +11,11 @@ const PORT = 3000;
 
 app.use(express.json({ limit: '100mb' }));
 app.use(express.urlencoded({ extended: true, limit: '100mb' }));
+
+// Cloud MongoDB Atlas URI
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://mdmunnanew764_db_user:7PDDurjCB4DfPLqe@cluster0.fo1bqgn.mongodb.net/?appName=Cluster0';
+let mongoClient: MongoClient | null = null;
+let mongoDb: Db | null = null;
 
 // Ensure persistent data directory exists
 const DATA_DIR = path.join(process.cwd(), 'data');
@@ -193,11 +199,106 @@ function loadDb(): DbData {
 
 let db: DbData = loadDb();
 
+// Real-time Cloud Sync to MongoDB Atlas
+async function syncToMongo(collectionName: string, item: any, idField = 'id') {
+  if (!mongoDb || !item) return;
+  try {
+    const filter = { [idField]: item[idField] };
+    await mongoDb.collection(collectionName).updateOne(filter, { $set: item }, { upsert: true });
+  } catch (err) {
+    console.warn(`MongoDB sync error on ${collectionName}:`, err);
+  }
+}
+
 function saveDb() {
   try {
     fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2), 'utf-8');
   } catch (err) {
     console.error('Error saving db.json:', err);
+  }
+
+  // Asynchronously sync entire state or updates to Mongo Cloud
+  if (mongoDb) {
+    (async () => {
+      try {
+        if (db.users && db.users.length > 0) {
+          for (const u of db.users) {
+            await mongoDb.collection('users').updateOne({ id: u.id }, { $set: u }, { upsert: true });
+          }
+        }
+        if (db.posts && db.posts.length > 0) {
+          for (const p of db.posts) {
+            await mongoDb.collection('posts').updateOne({ id: p.id }, { $set: p }, { upsert: true });
+          }
+        }
+        if (db.videos && db.videos.length > 0) {
+          for (const v of db.videos) {
+            await mongoDb.collection('videos').updateOne({ id: v.id }, { $set: v }, { upsert: true });
+          }
+        }
+        if (db.stories && db.stories.length > 0) {
+          for (const s of db.stories) {
+            await mongoDb.collection('stories').updateOne({ id: s.id }, { $set: s }, { upsert: true });
+          }
+        }
+      } catch {}
+    })();
+  }
+}
+
+// Connect to MongoDB Atlas Cloud on Startup
+async function initMongo() {
+  try {
+    console.log('Connecting to MongoDB Atlas Cloud Database...');
+    mongoClient = new MongoClient(MONGODB_URI, {
+      connectTimeoutMS: 8000,
+      serverSelectionTimeoutMS: 8000,
+    });
+    await mongoClient.connect();
+    mongoDb = mongoClient.db('telebook_cloud_db');
+    console.log('✅ Connected to MongoDB Atlas Cloud Database successfully!');
+
+    // 1. Sync Users from Mongo Cloud
+    const cloudUsers = await mongoDb.collection('users').find({}).toArray();
+    if (cloudUsers && cloudUsers.length > 0) {
+      db.users = cloudUsers.map(({ _id, ...rest }: any) => rest) as RegisteredUser[];
+    } else {
+      await mongoDb.collection('users').insertMany(DEFAULT_COMMUNITY_USERS as any[]);
+    }
+
+    // 2. Sync Posts from Mongo Cloud
+    const cloudPosts = await mongoDb.collection('posts').find({}).sort({ _id: -1 }).toArray();
+    if (cloudPosts && cloudPosts.length > 0) {
+      db.posts = cloudPosts.map(({ _id, ...rest }: any) => rest);
+    }
+
+    // 3. Sync Videos from Mongo Cloud
+    const cloudVideos = await mongoDb.collection('videos').find({}).sort({ _id: -1 }).toArray();
+    if (cloudVideos && cloudVideos.length > 0) {
+      db.videos = cloudVideos.map(({ _id, ...rest }: any) => rest) as StoredVideo[];
+    }
+
+    // 4. Sync Stories from Mongo Cloud
+    const cloudStories = await mongoDb.collection('stories').find({}).sort({ _id: -1 }).toArray();
+    if (cloudStories && cloudStories.length > 0) {
+      db.stories = cloudStories.map(({ _id, ...rest }: any) => rest);
+    }
+
+    // 5. Sync Messages from Mongo Cloud
+    const cloudMessages = await mongoDb.collection('messages').find({}).toArray();
+    if (cloudMessages && cloudMessages.length > 0) {
+      db.messages = cloudMessages.map(({ _id, ...rest }: any) => rest) as ChatMessage[];
+    }
+
+    // 6. Sync Notifications from Mongo Cloud
+    const cloudNotifs = await mongoDb.collection('notifications').find({}).sort({ _id: -1 }).toArray();
+    if (cloudNotifs && cloudNotifs.length > 0) {
+      db.notifications = cloudNotifs.map(({ _id, ...rest }: any) => rest);
+    }
+
+    saveDb();
+  } catch (err) {
+    console.warn('⚠️ MongoDB Atlas connection error (running with fallback):', err);
   }
 }
 
@@ -787,6 +888,8 @@ app.post('/api/posts/:id/comment', (req, res) => {
 
 // Start server with Vite middleware in dev & static dist in prod
 async function startServer() {
+  await initMongo();
+
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
       server: { middlewareMode: true, allowedHosts: true },
