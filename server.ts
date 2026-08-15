@@ -70,11 +70,112 @@ interface DbData {
   posts: any[];
 }
 
+const DEFAULT_COMMUNITY_USERS: RegisteredUser[] = [
+  {
+    id: 'user_munna',
+    name: 'Developer Munna',
+    username: 'BD_Shopee',
+    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+    bio: 'Building on TON & Telegram WebApps 🚀 Tech & Digital Creator',
+    isVerified: true,
+    isPremium: true,
+    starsCount: 1420,
+    followersCount: 3840,
+    followingCount: 512,
+    friendsCount: 684,
+    isOnline: true,
+  },
+  {
+    id: 'user_elena',
+    name: 'Elena Rostova',
+    username: 'elenarostova',
+    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80',
+    bio: 'Product Designer & Travel Creator ✈️ Bali vibes',
+    isVerified: true,
+    isPremium: true,
+    starsCount: 3200,
+    followersCount: 15400,
+    followingCount: 420,
+    friendsCount: 310,
+    isOnline: true,
+  },
+  {
+    id: 'user_marcus',
+    name: 'Marcus Chen',
+    username: 'marcusdev',
+    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+    bio: 'Fullstack Dev & Open-Source Contributor 💻',
+    isVerified: false,
+    isPremium: true,
+    starsCount: 840,
+    followersCount: 2900,
+    followingCount: 310,
+    friendsCount: 480,
+    isOnline: true,
+  },
+  {
+    id: 'user_sarah',
+    name: 'Sarah Connor',
+    username: 'sarahc',
+    avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&auto=format&fit=crop&q=80',
+    bio: 'Crypto Trader & Web3 Enthusiast ⚡',
+    isVerified: false,
+    isPremium: true,
+    starsCount: 1100,
+    followersCount: 4100,
+    followingCount: 380,
+    friendsCount: 520,
+    isOnline: false,
+    lastSeen: '15m ago',
+  },
+  {
+    id: 'user_pavel',
+    name: 'Pavel Durov',
+    username: 'durov',
+    avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
+    bio: 'Telegram Founder & TON Pioneer 💎',
+    isVerified: true,
+    isPremium: true,
+    starsCount: 9999,
+    followersCount: 950000,
+    followingCount: 12,
+    friendsCount: 1,
+    isOnline: true,
+  },
+  {
+    id: 'user_david',
+    name: 'David Miller',
+    username: 'davidm',
+    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
+    bio: 'Architect & Interior Design Visionary 🏛️',
+    isVerified: false,
+    isPremium: false,
+    starsCount: 450,
+    followersCount: 1800,
+    followingCount: 290,
+    friendsCount: 340,
+    isOnline: false,
+    lastSeen: '1h ago',
+  },
+];
+
 function loadDb(): DbData {
   try {
     if (fs.existsSync(DB_FILE)) {
       const raw = fs.readFileSync(DB_FILE, 'utf-8');
-      return JSON.parse(raw);
+      const parsed = JSON.parse(raw);
+      
+      // Ensure all default users exist in db.users
+      if (!parsed.users || parsed.users.length < 3) {
+        parsed.users = DEFAULT_COMMUNITY_USERS;
+      } else {
+        DEFAULT_COMMUNITY_USERS.forEach((def) => {
+          if (!parsed.users.some((u: any) => u.id === def.id || u.username === def.username)) {
+            parsed.users.push(def);
+          }
+        });
+      }
+      return parsed;
     }
   } catch (err) {
     console.warn('Error reading db.json, using defaults:', err);
@@ -82,22 +183,7 @@ function loadDb(): DbData {
 
   return {
     videos: [],
-    users: [
-      {
-        id: 'user_munna',
-        name: 'Developer Munna',
-        username: 'BD_Shopee',
-        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-        bio: 'Building on TON & Telegram WebApps 🚀 Tech & Digital Creator',
-        isVerified: true,
-        isPremium: true,
-        starsCount: 1420,
-        followersCount: 3840,
-        followingCount: 512,
-        friendsCount: 684,
-        isOnline: true,
-      },
-    ],
+    users: DEFAULT_COMMUNITY_USERS,
     messages: [],
     posts: [],
   };

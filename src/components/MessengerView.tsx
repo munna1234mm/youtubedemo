@@ -43,12 +43,18 @@ export const MessengerView: React.FC<MessengerViewProps> = ({
       const res = await fetch('/api/users');
       if (res.ok) {
         const data = await res.json();
-        const otherUsers = (data.users || []).filter((u: User) => u.id !== currentUser.id);
-        setCommunityUsers(otherUsers);
+        const otherUsers = (data.users || []).filter(
+          (u: User) => !currentUser || (u.id !== currentUser.id && u.username !== currentUser.username)
+        );
+        if (otherUsers.length > 0) {
+          setCommunityUsers(otherUsers);
+        } else {
+          setCommunityUsers(chats.map((c) => c.participant));
+        }
       }
     } catch {
       // fallback
-      setCommunityUsers(chats.map((c) => c.participant).filter((p) => p.id !== currentUser.id));
+      setCommunityUsers(chats.map((c) => c.participant).filter((p) => !currentUser || p.id !== currentUser.id));
     }
   };
 
@@ -56,7 +62,7 @@ export const MessengerView: React.FC<MessengerViewProps> = ({
     fetchCommunityUsers();
     const interval = setInterval(fetchCommunityUsers, 2500);
     return () => clearInterval(interval);
-  }, [currentUser]);
+  }, [currentUser?.id]);
 
   // Combine registered users & chat threads
   const userMap = new Map<string, User>();
