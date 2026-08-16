@@ -43,19 +43,25 @@ export const ChatModal: React.FC<ChatModalProps> = ({
       if (res.ok) {
         const data = await res.json();
         if (data.messages && data.messages.length > 0) {
-          setMessages(data.messages);
+          setMessages((prev) => {
+            const serverIds = new Set(data.messages.map((m: any) => m.id));
+            const pending = prev.filter((p) => !serverIds.has(p.id) && p.id !== 'm_welcome');
+            return [...data.messages, ...pending];
+          });
         } else {
-          // Default welcoming greeting if first time
-          setMessages([
-            {
-              id: 'm_welcome',
-              senderId: participant.id,
-              receiverId: currentUser.id,
-              text: `Hello ${currentUser.name}! 👋 Great to connect on TeleBook!`,
-              timestamp: 'Just now',
-              isRead: true,
-            },
-          ]);
+          setMessages((prev) => {
+            if (prev.length > 0) return prev;
+            return [
+              {
+                id: 'm_welcome',
+                senderId: participant.id,
+                receiverId: currentUser.id,
+                text: `Hello ${currentUser.name}! 👋 Great to connect on TeleBook!`,
+                timestamp: 'Just now',
+                isRead: true,
+              },
+            ];
+          });
         }
       }
     } catch {
@@ -67,7 +73,7 @@ export const ChatModal: React.FC<ChatModalProps> = ({
 
   useEffect(() => {
     fetchMessages();
-    const interval = setInterval(fetchMessages, 1500);
+    const interval = setInterval(fetchMessages, 1000);
     return () => clearInterval(interval);
   }, [participant.id, currentUser.id]);
 
@@ -83,8 +89,9 @@ export const ChatModal: React.FC<ChatModalProps> = ({
     setInputText('');
     triggerHaptic('light');
 
+    const tempId = `msg_${Date.now()}`;
     const tempMsg: Message = {
-      id: `msg_${Date.now()}`,
+      id: tempId,
       senderId: currentUser.id,
       receiverId: participant.id,
       text: textToSend,
@@ -92,10 +99,10 @@ export const ChatModal: React.FC<ChatModalProps> = ({
       isRead: true,
     };
 
-    setMessages((prev) => [...prev, tempMsg]);
+    setMessages((prev) => [...prev.filter((m) => m.id !== 'm_welcome'), tempMsg]);
 
     try {
-      await fetch('/api/messages', {
+      const res = await fetch('/api/messages', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -104,6 +111,9 @@ export const ChatModal: React.FC<ChatModalProps> = ({
           text: textToSend,
         }),
       });
+      if (res.ok) {
+        fetchMessages();
+      }
     } catch {
       // ignore
     }

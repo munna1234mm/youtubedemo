@@ -241,6 +241,16 @@ function saveDb() {
             await mongoDb.collection('stories').updateOne({ id: s.id }, { $set: s }, { upsert: true });
           }
         }
+        if (db.messages && db.messages.length > 0) {
+          for (const m of db.messages) {
+            await mongoDb.collection('messages').updateOne({ id: m.id }, { $set: m }, { upsert: true });
+          }
+        }
+        if (db.notifications && db.notifications.length > 0) {
+          for (const n of db.notifications) {
+            await mongoDb.collection('notifications').updateOne({ id: n.id }, { $set: n }, { upsert: true });
+          }
+        }
       } catch {}
     })();
   }
@@ -616,12 +626,18 @@ app.post('/api/users', (req, res) => {
 // 3. Messages API
 app.get('/api/messages', (req, res) => {
   const { user1, user2 } = req.query;
-  if (!user1 || !user2) return res.json({ success: true, messages: db.messages });
+  if (!user1 || !user2) return res.json({ success: true, messages: db.messages || [] });
 
-  const thread = db.messages.filter(
+  const u1 = (db.users || []).find((u) => u.id === user1 || u.username === user1);
+  const u2 = (db.users || []).find((u) => u.id === user2 || u.username === user2);
+
+  const u1Keys = new Set([String(user1), u1?.id, u1?.username].filter(Boolean));
+  const u2Keys = new Set([String(user2), u2?.id, u2?.username].filter(Boolean));
+
+  const thread = (db.messages || []).filter(
     (m) =>
-      (m.senderId === user1 && m.receiverId === user2) ||
-      (m.senderId === user2 && m.receiverId === user1)
+      (u1Keys.has(m.senderId) && u2Keys.has(m.receiverId)) ||
+      (u2Keys.has(m.senderId) && u1Keys.has(m.receiverId))
   );
   res.json({ success: true, messages: thread });
 });
