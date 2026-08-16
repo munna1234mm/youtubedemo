@@ -127,10 +127,21 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
     setIsEditingBio(false);
   };
 
+  const [copiedProfile, setCopiedProfile] = useState(false);
+
+  const handleCopyProfileLink = () => {
+    const profileUrl = `${window.location.origin}/@${targetUser.username || targetUser.name}/profile`;
+    navigator.clipboard?.writeText(profileUrl);
+    setCopiedProfile(true);
+    triggerHaptic('success');
+    setTimeout(() => setCopiedProfile(false), 2500);
+  };
+
   const handleShareProfile = () => {
     triggerHaptic('medium');
+    const profileUrl = `${window.location.origin}/@${targetUser.username || targetUser.name}/profile`;
     shareToTelegram(
-      window.location.href,
+      profileUrl,
       `Check out ${targetUser.name}'s profile on TeleBook!\n@${targetUser.username}`
     );
   };
@@ -256,6 +267,16 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                   )}
                 </>
               )}
+
+              {/* Share & Copy Profile Link Buttons */}
+              <button
+                onClick={handleCopyProfileLink}
+                className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-sky-400 hover:text-sky-300 text-xs font-bold rounded-xl flex items-center gap-1.5 transition border border-slate-700 shadow"
+                title="Copy Profile Link"
+              >
+                <Share2 className="w-3.5 h-3.5" />
+                <span>{copiedProfile ? 'Copied! ✓' : '🔗 Copy Link'}</span>
+              </button>
             </div>
 
           </div>

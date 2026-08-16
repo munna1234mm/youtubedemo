@@ -65,7 +65,8 @@ export const PostCard: React.FC<PostCardProps> = ({
 
   /* Copy Post Link */
   const handleCopyLink = () => {
-    const postUrl = `${window.location.origin}/#post_${post.id}`;
+    const username = post.author.username || 'user';
+    const postUrl = `${window.location.origin}/@${username}/post/${post.id}`;
     navigator.clipboard?.writeText(postUrl);
     setCopiedType('link');
     triggerHaptic('success');

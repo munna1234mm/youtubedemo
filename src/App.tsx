@@ -193,6 +193,181 @@ export default function App() {
     return () => clearInterval(interval);
   }, [currentUser?.id]);
 
+  // --- Modern URL Deep-Linking & History Router ---
+  const isPopStateRef = useRef(false);
+
+  // 1. Parse initial URL and Handle Back/Forward Navigation
+  const handleRouteFromUrl = async () => {
+    const path = window.location.pathname;
+    if (!path || path === '/' || path === '/feed') {
+      setActiveTab('feed');
+      setViewingProfileUser(null);
+      return;
+    }
+
+    // Handle @username/profile or @username
+    if (path.startsWith('/@')) {
+      const parts = path.substring(2).split('/');
+      const rawUsername = decodeURIComponent(parts[0]);
+      const subAction = parts[1]; // 'profile', 'post', etc.
+
+      if (subAction === 'post' && parts[2]) {
+        const postId = parts[2];
+        setActiveTab('feed');
+        setActiveCommentsPostId(postId);
+        return;
+      }
+
+      // Load matching user profile
+      try {
+        const res = await fetch('/api/users');
+        if (res.ok) {
+          const data = await res.json();
+          const found = (data.users || []).find(
+            (u: any) =>
+              u.username?.toLowerCase() === rawUsername.toLowerCase() ||
+              u.name?.toLowerCase() === rawUsername.toLowerCase()
+          );
+          if (found) {
+            setViewingProfileUser(found);
+            setActiveTab('profile');
+            return;
+          }
+        }
+      } catch {}
+
+      // Fallback user placeholder for profile
+      setViewingProfileUser({
+        id: `u_${rawUsername}`,
+        name: rawUsername,
+        username: rawUsername,
+        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+        starsCount: 0,
+        followersCount: 0,
+        followingCount: 0,
+        friendsCount: 0,
+      });
+      setActiveTab('profile');
+      return;
+    }
+
+    // Direct /post/:id
+    if (path.startsWith('/post/')) {
+      const postId = path.replace('/post/', '');
+      setActiveTab('feed');
+      setActiveCommentsPostId(postId);
+      return;
+    }
+
+    // Direct /reels
+    if (path.startsWith('/reels')) {
+      setActiveTab('reels');
+      return;
+    }
+
+    // Direct /messages or /messages/@username
+    if (path.startsWith('/messages')) {
+      setActiveTab('messenger');
+      if (path.includes('/@')) {
+        const targetUsername = decodeURIComponent(path.split('/@')[1] || '');
+        if (targetUsername) {
+          fetch('/api/users')
+            .then((r) => r.json())
+            .then((d) => {
+              const found = (d.users || []).find(
+                (u: any) =>
+                  u.username?.toLowerCase() === targetUsername.toLowerCase() ||
+                  u.name?.toLowerCase() === targetUsername.toLowerCase()
+              );
+              if (found) setActiveChatParticipant(found);
+            })
+            .catch(() => {});
+        }
+      }
+      return;
+    }
+
+    // Direct /marketplace
+    if (path.startsWith('/marketplace')) {
+      setActiveTab('marketplace');
+      return;
+    }
+
+    // Direct /groups
+    if (path.startsWith('/groups')) {
+      setActiveTab('groups');
+      return;
+    }
+
+    // Direct /notifications
+    if (path.startsWith('/notifications')) {
+      setActiveTab('notifications');
+      return;
+    }
+
+    // Direct /profile
+    if (path.startsWith('/profile')) {
+      setViewingProfileUser(null);
+      setActiveTab('profile');
+      return;
+    }
+  };
+
+  useEffect(() => {
+    handleRouteFromUrl();
+
+    const onPopState = () => {
+      isPopStateRef.current = true;
+      handleRouteFromUrl().finally(() => {
+        isPopStateRef.current = false;
+      });
+    };
+
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
+
+  // 2. Sync State Changes to Clean Browser URL
+  useEffect(() => {
+    if (isPopStateRef.current) return;
+
+    let targetUrl = '/';
+
+    if (viewingProfileUser) {
+      targetUrl = `/@${viewingProfileUser.username || viewingProfileUser.name}/profile`;
+    } else if (activeTab === 'profile') {
+      targetUrl = currentUser ? `/@${currentUser.username || currentUser.name}/profile` : '/profile';
+    } else if (activeTab === 'reels') {
+      targetUrl = '/reels';
+    } else if (activeTab === 'messenger') {
+      targetUrl = activeChatParticipant
+        ? `/messages/@${activeChatParticipant.username || activeChatParticipant.name}`
+        : '/messages';
+    } else if (activeTab === 'marketplace') {
+      targetUrl = '/marketplace';
+    } else if (activeTab === 'groups') {
+      targetUrl = '/groups';
+    } else if (activeTab === 'notifications') {
+      targetUrl = '/notifications';
+    } else if (activeCommentsPostId) {
+      const targetPost = posts.find((p) => p.id === activeCommentsPostId);
+      const author = targetPost?.author?.username || 'user';
+      targetUrl = `/@${author}/post/${activeCommentsPostId}`;
+    } else if (activeTab === 'feed') {
+      targetUrl = '/';
+    }
+
+    if (window.location.pathname !== targetUrl) {
+      window.history.pushState({ tab: activeTab }, '', targetUrl);
+    }
+  }, [
+    activeTab,
+    viewingProfileUser,
+    activeChatParticipant,
+    activeCommentsPostId,
+    currentUser?.username,
+  ]);
+
   // Initialize Telegram WebApp SDK if available
   useEffect(() => {
     const tg = getTelegramWebApp();
