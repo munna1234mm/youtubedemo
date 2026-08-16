@@ -55,7 +55,7 @@ export const StoriesBar: React.FC<StoriesBarProps> = ({
         </div>
 
         {/* Stories List */}
-        {stories.map((story, idx) => {
+        {(stories || []).filter((s) => Boolean(s && s.id)).map((story, idx) => {
           const isVideo = story.mediaType === 'video' || story.mediaUrl?.includes('.mp4') || story.mediaUrl?.startsWith('data:video');
 
           return (

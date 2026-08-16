@@ -66,19 +66,24 @@ export const MessengerView: React.FC<MessengerViewProps> = ({
 
   // Combine registered users & chat threads
   const userMap = new Map<string, User>();
-  communityUsers.forEach((u) => userMap.set(u.id, u));
-  chats.forEach((c) => {
-    if (c.participant.id !== currentUser.id && !userMap.has(c.participant.id)) {
+  (communityUsers || []).forEach((u) => {
+    if (u && u.id) userMap.set(u.id, u);
+  });
+  (chats || []).forEach((c) => {
+    if (c && c.participant && c.participant.id && (!currentUser || c.participant.id !== currentUser.id) && !userMap.has(c.participant.id)) {
       userMap.set(c.participant.id, c.participant);
     }
   });
 
-  const allMembersList = Array.from(userMap.values());
+  const allMembersList = Array.from(userMap.values()).filter((u) => Boolean(u && u.id));
 
   const filteredMembers = allMembersList.filter((u: any) => {
+    if (!u) return false;
+    const name = u.name || '';
+    const username = u.username || '';
     const matchesSearch =
-      u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      u.username.toLowerCase().includes(searchQuery.toLowerCase());
+      name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      username.toLowerCase().includes(searchQuery.toLowerCase());
     if (!matchesSearch) return false;
     if (filterMode === 'online') return Boolean(u.isOnline);
     return true;

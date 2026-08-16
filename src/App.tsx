@@ -1138,47 +1138,53 @@ export default function App() {
 
                   {/* Horizontal Scroll Reels Cards */}
                   <div className="flex gap-3 overflow-x-auto no-scrollbar py-1">
-                    {reels.map((r) => (
-                      <div
-                        key={r.id}
-                        onClick={() => {
-                          triggerHaptic('medium');
-                          setActiveTab('reels');
-                        }}
-                        className="relative w-32 h-48 rounded-2xl overflow-hidden shrink-0 cursor-pointer bg-black border border-slate-800 hover:border-sky-500 transition group shadow-md"
-                      >
-                        <video
-                          src={r.videoUrl}
-                          className="w-full h-full object-cover group-hover:scale-105 transition duration-300 brightness-90 pointer-events-none"
-                          muted
-                          playsInline
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/80" />
+                    {(reels || []).filter((r) => Boolean(r && r.id)).map((r) => {
+                      const authorAvatar = r.author?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80';
+                      const authorName = r.author?.name || 'Member';
+                      const authorUsername = r.author?.username || 'user';
 
-                        {/* Play Icon */}
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <div className="w-9 h-9 rounded-full bg-black/50 backdrop-blur-md flex items-center justify-center text-white group-hover:scale-110 transition shadow">
-                            <Play className="w-4 h-4 fill-white ml-0.5" />
+                      return (
+                        <div
+                          key={r.id}
+                          onClick={() => {
+                            triggerHaptic('medium');
+                            setActiveTab('reels');
+                          }}
+                          className="relative w-32 h-48 rounded-2xl overflow-hidden shrink-0 cursor-pointer bg-black border border-slate-800 hover:border-sky-500 transition group shadow-md"
+                        >
+                          <video
+                            src={r.videoUrl}
+                            className="w-full h-full object-cover group-hover:scale-105 transition duration-300 brightness-90 pointer-events-none"
+                            muted
+                            playsInline
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/80" />
+
+                          {/* Play Icon */}
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="w-9 h-9 rounded-full bg-black/50 backdrop-blur-md flex items-center justify-center text-white group-hover:scale-110 transition shadow">
+                              <Play className="w-4 h-4 fill-white ml-0.5" />
+                            </div>
+                          </div>
+
+                          {/* Bottom Author & Title */}
+                          <div className="absolute bottom-2 inset-x-2 text-white">
+                            <p className="text-[11px] font-bold truncate drop-shadow">{r.caption || 'Reel'}</p>
+                            <div className="flex items-center gap-1 mt-0.5">
+                              <img src={authorAvatar} alt={authorName} className="w-3.5 h-3.5 rounded-full object-cover" />
+                              <span className="text-[9px] text-slate-300 truncate">@{authorUsername}</span>
+                            </div>
                           </div>
                         </div>
-
-                        {/* Bottom Author & Title */}
-                        <div className="absolute bottom-2 inset-x-2 text-white">
-                          <p className="text-[11px] font-bold truncate drop-shadow">{r.caption || 'Reel'}</p>
-                          <div className="flex items-center gap-1 mt-0.5">
-                            <img src={r.author.avatar} alt={r.author.name} className="w-3.5 h-3.5 rounded-full object-cover" />
-                            <span className="text-[9px] text-slate-300 truncate">@{r.author.username}</span>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}
 
               {/* Feed Posts List */}
               <div className="space-y-4">
-                {filteredPosts.map((post) => (
+                {(filteredPosts || []).filter((p) => Boolean(p && p.id)).map((post) => (
                   <PostCard
                     key={post.id}
                     post={post}
