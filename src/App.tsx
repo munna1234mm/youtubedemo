@@ -156,9 +156,79 @@ export default function App() {
       } catch {}
     };
 
+    const fetchVideosAndSyncFeed = async () => {
+      try {
+        const res = await fetch('/api/videos');
+        if (res.ok) {
+          const data = await res.json();
+          const serverVideos = data.videos || [];
+          if (serverVideos.length > 0) {
+            // Update reels
+            const serverReels: Reel[] = serverVideos.map((v: any) => ({
+              id: v.id,
+              author: {
+                id: v.authorId || 'user_anon',
+                name: v.authorName || 'TeleBook Member',
+                username: v.authorUsername || 'user',
+                avatar: v.authorAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+                starsCount: 0,
+                followersCount: 0,
+                followingCount: 0,
+                friendsCount: 0,
+              },
+              videoUrl: v.url,
+              thumbnailUrl: v.authorAvatar || '',
+              caption: v.title || 'Reel',
+              audioName: `Original Audio · ${v.authorName || 'TeleBook Member'}`,
+              likesCount: Math.floor(Math.random() * 200) + 20,
+              commentsCount: Math.floor(Math.random() * 20),
+              sharesCount: Math.floor(Math.random() * 10),
+            }));
+            setReels(serverReels);
+
+            // Also convert all uploaded reels into Home Feed video posts
+            const reelPosts: Post[] = serverVideos.map((v: any) => ({
+              id: `post_reel_${v.id}`,
+              author: {
+                id: v.authorId || 'user_anon',
+                name: v.authorName || 'TeleBook Member',
+                username: v.authorUsername || 'user',
+                avatar: v.authorAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+                starsCount: 0,
+                followersCount: 0,
+                followingCount: 0,
+                friendsCount: 0,
+              },
+              content: `🎬 **${v.title || 'Short Reel'}**`,
+              videoUrl: v.url,
+              timestamp: v.uploadedAt ? new Date(v.uploadedAt).toLocaleDateString() : 'Just now',
+              likesCount: 28,
+              reactionsSummary: { like: 18, love: 10 },
+              commentsCount: 2,
+              sharesCount: 1,
+              starsDonated: 0,
+              privacy: 'public',
+            }));
+
+            setPosts((prev) => {
+              const existingIds = new Set(prev.map((p) => p.id));
+              const missingReelPosts = reelPosts.filter((rp) => !existingIds.has(rp.id));
+              if (missingReelPosts.length === 0) return prev;
+              return [...missingReelPosts, ...prev];
+            });
+          }
+        }
+      } catch {}
+    };
+
     fetchStories();
+    fetchVideosAndSyncFeed();
     const interval = setInterval(fetchStories, 3000);
-    return () => clearInterval(interval);
+    const vidInterval = setInterval(fetchVideosAndSyncFeed, 4000);
+    return () => {
+      clearInterval(interval);
+      clearInterval(vidInterval);
+    };
   }, []);
 
   // Sync safe lightweight state to localStorage
@@ -1034,6 +1104,75 @@ export default function App() {
                   </button>
                 </div>
               </div>
+
+              {/* Trending Reels & Short Videos Shelf in Home Feed */}
+              {reels.length > 0 && (
+                <div className="bg-slate-900 border border-slate-800 rounded-3xl p-4 shadow-md space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-rose-500 to-amber-500 flex items-center justify-center text-white shadow-md">
+                        <Film className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-bold text-white font-['Outfit'] flex items-center gap-1.5">
+                          <span>Reels & Short Videos</span>
+                          <span className="text-[10px] bg-rose-500/20 text-rose-400 font-extrabold px-2 py-0.5 rounded-full border border-rose-500/30">ALL REELS</span>
+                        </h3>
+                        <p className="text-[11px] text-slate-400">Watch videos uploaded by all community members</p>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => {
+                        triggerHaptic('light');
+                        setActiveTab('reels');
+                      }}
+                      className="text-xs font-bold text-sky-400 hover:text-sky-300 flex items-center gap-0.5"
+                    >
+                      <span>Open Player</span>
+                      <span>➔</span>
+                    </button>
+                  </div>
+
+                  {/* Horizontal Scroll Reels Cards */}
+                  <div className="flex gap-3 overflow-x-auto no-scrollbar py-1">
+                    {reels.map((r) => (
+                      <div
+                        key={r.id}
+                        onClick={() => {
+                          triggerHaptic('medium');
+                          setActiveTab('reels');
+                        }}
+                        className="relative w-32 h-48 rounded-2xl overflow-hidden shrink-0 cursor-pointer bg-black border border-slate-800 hover:border-sky-500 transition group shadow-md"
+                      >
+                        <video
+                          src={r.videoUrl}
+                          className="w-full h-full object-cover group-hover:scale-105 transition duration-300 brightness-90 pointer-events-none"
+                          muted
+                          playsInline
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/80" />
+
+                        {/* Play Icon */}
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div className="w-9 h-9 rounded-full bg-black/50 backdrop-blur-md flex items-center justify-center text-white group-hover:scale-110 transition shadow">
+                            <Play className="w-4 h-4 fill-white ml-0.5" />
+                          </div>
+                        </div>
+
+                        {/* Bottom Author & Title */}
+                        <div className="absolute bottom-2 inset-x-2 text-white">
+                          <p className="text-[11px] font-bold truncate drop-shadow">{r.caption || 'Reel'}</p>
+                          <div className="flex items-center gap-1 mt-0.5">
+                            <img src={r.author.avatar} alt={r.author.name} className="w-3.5 h-3.5 rounded-full object-cover" />
+                            <span className="text-[9px] text-slate-300 truncate">@{r.author.username}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Feed Posts List */}
               <div className="space-y-4">

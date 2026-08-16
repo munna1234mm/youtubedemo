@@ -31,6 +31,7 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
   onClose,
   onSubmitPost,
 }) => {
+  const [postTitle, setPostTitle] = useState('');
   const [content, setContent] = useState('');
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
   const [selectedVideo, setSelectedVideo] = useState<string | null>(null);
@@ -184,9 +185,13 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
       }
     }
 
+    const finalContent = postTitle.trim()
+      ? `**${postTitle.trim()}**\n\n${content.trim()}`
+      : content.trim();
+
     const newPost: Partial<Post> = {
       author: currentUser,
-      content,
+      content: finalContent,
       images: selectedImages.length > 0 ? selectedImages : undefined,
       videoUrl: selectedVideo || undefined,
       feeling: feeling || undefined,
@@ -213,7 +218,7 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
         
         {/* Modal Header */}
         <div className="px-4 py-3 border-b border-slate-800 flex items-center justify-between">
-          <h2 className="text-base font-bold text-white font-['Outfit']">Create Post</h2>
+          <h2 className="text-base font-bold text-white font-['Outfit']">Create Post & Upload Photos</h2>
           <button
             onClick={onClose}
             className="w-8 h-8 rounded-full bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center transition"
@@ -257,15 +262,25 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
             </div>
           </div>
 
+          {/* Post Title / Headline Input */}
+          <div>
+            <input
+              type="text"
+              placeholder="Post Title / Headline (e.g. Beautiful Sunset in Dubai 🌅)"
+              value={postTitle}
+              onChange={(e) => setPostTitle(e.target.value)}
+              className="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-3.5 py-2 text-sm text-white font-bold placeholder-slate-500 focus:outline-none focus:border-sky-500 transition"
+            />
+          </div>
+
           {/* Main Text Input */}
           <div className="relative">
             <textarea
-              rows={4}
-              placeholder="What's on your mind?"
+              rows={3}
+              placeholder="Write your story, thoughts or description..."
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              className="w-full bg-transparent text-slate-100 placeholder-slate-500 text-base focus:outline-none resize-none border-none p-0"
-              autoFocus
+              className="w-full bg-transparent text-slate-100 placeholder-slate-500 text-sm focus:outline-none resize-none border-none p-0"
             />
 
             {/* AI Magic Helper */}
