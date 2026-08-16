@@ -251,8 +251,10 @@ async function initMongo() {
   try {
     console.log('Connecting to MongoDB Atlas Cloud Database...');
     mongoClient = new MongoClient(MONGODB_URI, {
-      connectTimeoutMS: 8000,
-      serverSelectionTimeoutMS: 8000,
+      tls: true,
+      tlsAllowInvalidCertificates: true,
+      connectTimeoutMS: 10000,
+      serverSelectionTimeoutMS: 10000,
     });
     await mongoClient.connect();
     mongoDb = mongoClient.db('telebook_cloud_db');
