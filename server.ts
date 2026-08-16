@@ -355,9 +355,26 @@ function getStorageClient(): Storage | null {
   }
 }
 
+const uploadsDir = path.join(process.cwd(), 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+app.use('/uploads', express.static(uploadsDir));
+
+const storageEngine = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, uploadsDir);
+  },
+  filename: (req, file, cb) => {
+    const cleanName = `${Date.now()}_${file.originalname.replace(/[^a-zA-Z0-9.]/g, '_')}`;
+    cb(null, cleanName);
+  },
+});
+
 const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 100 * 1024 * 1024 },
+  storage: storageEngine,
+  limits: { fileSize: 40 * 1024 * 1024 }, // 40 MB max
 });
 
 /* ── API Endpoints ── */
@@ -380,10 +397,10 @@ app.get('/api/videos', (req, res) => {
 
 app.post('/api/upload/video', upload.single('video'), async (req, res) => {
   try {
-    let videoBuffer: Buffer | null = null;
     let fileName = `vid_${Date.now()}_${Math.floor(Math.random() * 10000)}.mp4`;
     let mimeType = 'video/mp4';
     let size = 0;
+    let publicUrl = '';
     const title = req.body?.title || 'User Video Reel';
     const authorId = req.body?.authorId || 'user_me';
     const authorName = req.body?.authorName || 'TeleBook User';
@@ -391,13 +408,13 @@ app.post('/api/upload/video', upload.single('video'), async (req, res) => {
     const authorUsername = req.body?.authorUsername || 'user';
 
     if (req.file) {
-      videoBuffer = req.file.buffer;
-      fileName = `${Date.now()}_${req.file.originalname.replace(/[^a-zA-Z0-9.]/g, '_')}`;
+      fileName = req.file.filename;
       mimeType = req.file.mimetype;
       size = req.file.size;
+      publicUrl = `/uploads/${fileName}`;
     }
 
-    if (req.body?.videoUrl && !videoBuffer) {
+    if (req.body?.videoUrl && !req.file) {
       const newVideo: StoredVideo = {
         id: `vid_${Date.now()}`,
         title,
@@ -418,27 +435,8 @@ app.post('/api/upload/video', upload.single('video'), async (req, res) => {
       return res.json({ success: true, video: newVideo });
     }
 
-    if (!videoBuffer) {
+    if (!publicUrl) {
       return res.status(400).json({ error: 'No video file or payload provided' });
-    }
-
-    let publicUrl = '';
-    const storage = getStorageClient();
-    const bucketName = process.env.GCS_BUCKET_NAME || 'telebook-user-videos';
-
-    if (storage && bucketName) {
-      try {
-        const bucket = storage.bucket(bucketName);
-        const file = bucket.file(`videos/${fileName}`);
-        await file.save(videoBuffer, {
-          metadata: { contentType: mimeType, cacheControl: 'public, max-age=31536000' },
-        });
-        publicUrl = `https://storage.googleapis.com/${bucketName}/videos/${fileName}`;
-      } catch {
-        publicUrl = `data:${mimeType};base64,${videoBuffer.toString('base64')}`;
-      }
-    } else {
-      publicUrl = `data:${mimeType};base64,${videoBuffer.toString('base64')}`;
     }
 
     const storedItem: StoredVideo = {
@@ -453,8 +451,8 @@ app.post('/api/upload/video', upload.single('video'), async (req, res) => {
       authorName,
       authorAvatar,
       authorUsername,
-      storageProvider: storage ? 'gcs' : 'local_cdn',
-      bucket: bucketName,
+      storageProvider: 'local_cdn',
+      bucket: 'local',
     };
 
     db.videos.unshift(storedItem);
