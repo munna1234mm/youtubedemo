@@ -8,7 +8,9 @@ import {
   TrendingUp, 
   Filter, 
   RefreshCw,
-  RotateCcw 
+  RotateCcw,
+  Film,
+  Play
 } from 'lucide-react';
 import { 
   User, 
